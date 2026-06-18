@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Reading Buddy</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens ─── */
+:root {
+  --mint:       #4ade80;
+  --mint-dark:  #16a34a;
+  --sky:        #38bdf8;
+  --sky-dark:   #0284c7;
+  --coral:      #fb7185;
+  --yellow:     #fbbf24;
+  --purple:     #a78bfa;
+  --indigo:     #6366f1;
+  --indigo-dark:#4338ca;
+  --bg:         #f0fdf4;
+  --surface:    #ffffff;
+  --text:       #1e293b;
+  --muted:      #64748b;
+  --border:     #e2e8f0;
+  --story-bg:   #fafffe;
+  --quiz-bg:    #fafff4; /* slight difference so panels read as distinct */
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 12% 12%, #dcfce7 0%, transparent 42%),
+    radial-gradient(circle at 88% 88%, #dbeafe 0%, transparent 42%);
+  min-height: 100vh;
+  color: var(--text);
+}
+h1, h2, h3 { font-family: 'Fredoka One', cursive; }
+
+/* ─── App Shell ─── */
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; padding: 14px; gap: 12px; }
+
+/* ─── Header ─── */
+.header {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 14px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
+  border: 2px solid #dcfce7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.header-left h1 { font-size: 1.55rem; color: var(--mint-dark); }
+.header-left p  { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 2px; }
+.header-right   { display: flex; align-items: center; gap: 18px; }
+.level-badge    { text-align: right; }
+.level-badge .lbl  { font-size: .56rem; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: .12em; }
+.level-badge .val  { font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--mint-dark); line-height: 1; }
+.level-badge .desc { font-size: .68rem; color: var(--muted); font-weight: 700; }
+.streak-bar { display: flex; gap: 3px; justify-content: flex-end; margin-top: 5px; }
+.s-dot { width: 16px; height: 5px; border-radius: 99px; background: #e2e8f0; transition: background .3s; }
+.s-dot.on   { background: #22c55e; }
+.s-dot.warn { background: var(--coral); }
+
+/* ─── Level Picker ─── */
+.level-picker {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.05);
+  border: 2px solid #f1f5f9;
+  flex-shrink: 0;
+}
+.level-picker h2 { font-size: 1.05rem; margin-bottom: 12px; }
+.level-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+.lvl-btn {
+  padding: 7px 13px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-family: 'Fredoka One', cursive;
+  font-size: .95rem;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text);
+  transition: all .15s;
+}
+.lvl-btn:hover  { border-color: var(--mint); background: #f0fdf4; transform: translateY(-1px); }
+.lvl-btn.active { background: var(--mint-dark); border-color: var(--mint-dark); color: #fff; box-shadow: 0 3px 10px rgba(22,163,74,.3); }
+
+/* difficulty tiers */
+.lvl-btn.tier-a { border-color: #bbf7d0; }
+.lvl-btn.tier-b { border-color: #a5f3fc; }
+.lvl-btn.tier-c { border-color: #c7d2fe; }
+
+/* ─── Progress Dashboard ─── */
+.dashboard {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.05);
+  border: 2px solid #f1f5f9;
+  flex-shrink: 0;
+}
+.dashboard-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dashboard-top h2 { font-size: 1.05rem; }
+.dashboard-actions { display: flex; gap: 7px; }
+.dash-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: .7rem;
+  font-weight: 900;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.dash-legend span { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.leg-dot.untouched { background: #e2e8f0; }
+.leg-dot.attempted { background: #fbbf24; }
+.leg-dot.mastered  { background: #22c55e; }
+.dot-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.dash-dot-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer;
+}
+.dash-dot {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fredoka One', cursive; font-size: .95rem;
+  transition: transform .15s, box-shadow .15s;
+  border: 2px solid transparent;
+}
+.dash-dot-wrap:hover .dash-dot { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.dash-dot.untouched { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+.dash-dot.attempted { background: #fef3c7; color: #92400e; border-color: #fbbf24; }
+.dash-dot.mastered  { background: #dcfce7; color: #15803d; border-color: #4ade80; }
+.dash-dot.current   { box-shadow: 0 0 0 3px #6366f1, 0 4px 12px rgba(99,102,241,.3); }
+.dash-lbl { font-size: .58rem; font-weight: 900; color: var(--muted); text-transform: uppercase; }
+.dash-stats { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.dash-stat {
+  flex: 1; min-width: 80px;
+  background: #f8fafc; border: 2px solid #e2e8f0;
+  border-radius: 12px; padding: 10px 12px; text-align: center;
+}
+.dash-stat-num { font-family: 'Fredoka One', cursive; font-size: 1.4rem; line-height: 1; }
+.dash-stat-lbl { font-size: .63rem; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-top: 2px; }
+.dash-stat.green  .dash-stat-num { color: #16a34a; }
+.dash-stat.yellow .dash-stat-num { color: #d97706; }
+.dash-stat.indigo .dash-stat-num { color: #4338ca; }
+.reset-confirm {
+  background: #fff1f2; border: 2px solid #fda4af;
+  border-radius: 14px; padding: 14px 16px; margin-top: 12px;
+  font-size: .85rem; font-weight: 700; color: #881337; display: none;
+}
+.reset-confirm.show { display: block; }
+.reset-confirm-btns { display: flex; gap: 8px; margin-top: 10px; }
+
+/* ─── Split-Screen Layout ─── */
+.split-view {
+  display: flex;
+  gap: 12px;
+  flex: 1;         /* fill remaining vertical space */
+  min-height: 0;   /* allow flex children to scroll */
+  align-items: stretch;
+}
+
+/* LEFT: Story Panel */
+.story-panel {
+  flex: 0 0 60%;
+  background: var(--story-bg);
+  border-radius: 20px;
+  border: 2px solid #dcfce7;
+  box-shadow: 0 4px 20px rgba(0,0,0,.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;             /* clip the inner scroll */
+  min-height: 0;
+}
+.story-panel-header {
+  padding: 14px 18px 12px;
+  border-bottom: 2px solid #f0fdf4;
+  flex-shrink: 0;
+}
+.story-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.story-meta { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.pill { padding: 4px 11px; border-radius: 99px; font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
+.pill-green  { background: #dcfce7; color: #16a34a; }
+.pill-blue   { background: #dbeafe; color: #1d4ed8; }
+.pill-purple { background: #ede9fe; color: #6d28d9; }
+
+.progress-wrap { }
+.progress-label { display: flex; justify-content: space-between; font-size: .72rem; font-weight: 800; color: var(--muted); margin-bottom: 4px; }
+.progress-track { height: 7px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.progress-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg,#4ade80,#22d3ee); transition: width .5s ease; }
+
+.story-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Story box */
+.story-box {
+  background: linear-gradient(135deg,#f0fdf4,#eff6ff);
+  border-radius: 18px;
+  padding: 24px 20px;
+  border: 2px solid #dcfce7;
+  margin-bottom: 18px;
+}
+.story-title { font-size: 1.15rem; color: var(--sky-dark); margin-bottom: 11px; text-align: center; }
+.story-text  { font-size: 1.07rem; line-height: 1.85; font-weight: 700; color: var(--text); }
+
+/* Higher-level stories use slightly smaller readable font */
+.story-text.prose { font-size: .97rem; font-weight: 600; line-height: 1.9; }
+
+.tx-box { margin-top: 14px; padding: 11px 14px; background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; font-size: .87rem; color: #1e40af; font-weight: 700; font-style: italic; line-height: 1.55; }
+.tx-lbl { font-size: .68rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: #60a5fa; margin-bottom: 4px; font-style: normal; }
+
+/* Mic controls */
+.mic-controls { padding: 16px 22px; border-top: 2px solid #f1f5f9; flex-shrink: 0; }
+
+/* Results */
+.results-area { padding: 0 22px 20px; }
+.results-card { border-radius: 20px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+.results-card.success { background: linear-gradient(135deg,#f0fdf4,#dcfce7); border: 2px solid #86efac; }
+.results-card.fail    { background: linear-gradient(135deg,#fff7ed,#ffedd5); border: 2px solid #fdba74; }
+.score-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; }
+.score-num { font-family: 'Fredoka One', cursive; font-size: 2.6rem; color: var(--text); line-height: 1; }
+.score-lbl { font-size: .66rem; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.badge     { padding: 6px 15px; border-radius: 99px; font-family: 'Fredoka One', cursive; font-size: .85rem; }
+.badge.s { background: #22c55e; color: #fff; }
+.badge.f { background: #f97316; color: #fff; }
+.word-feedback { display: flex; flex-wrap: wrap; gap: 5px; padding: 13px; background: rgba(255,255,255,.65); border-radius: 12px; margin-bottom: 14px; }
+.wchip     { font-size: .95rem; font-weight: 800; line-height: 1.6; }
+.wchip.ok  { color: #16a34a; }
+.wchip.bad { color: #fca5a5; text-decoration: line-through; text-decoration-color: #ef4444; text-decoration-thickness: 3px; }
+.action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.action-row .btn { flex: 1; min-width: 100px; }
+.banner { border-radius: 13px; padding: 11px 15px; text-align: center; font-family: 'Fredoka One', cursive; font-size: 1rem; margin-top: 11px; }
+.banner.up   { background: linear-gradient(135deg,#4ade80,#06b6d4); color: #fff; animation: pulse 1.5s infinite; }
+.banner.down { background: linear-gradient(135deg,#fb923c,#f43f5e); color: #fff; }
+
+/* RIGHT: Quiz Panel */
+.quiz-panel {
+  flex: 0 0 40%;
+  background: var(--surface);
+  border-radius: 20px;
+  border: 2px solid #e0e7ff;
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  /* Sticky: panel stays in viewport while story scrolls */
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 28px);
+}
+.quiz-panel-header {
+  padding: 14px 18px 10px;
+  border-bottom: 2px solid #e0e7ff;
+  flex-shrink: 0;
+}
+.quiz-panel-header h2 { font-size: 1.1rem; color: var(--indigo-dark); }
+.quiz-sub { font-size: .76rem; color: var(--muted); font-weight: 700; margin-top: 2px; }
+.quiz-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Quiz idle / placeholder */
+.quiz-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 24px;
+}
+.quiz-idle-emoji { font-size: 56px; margin-bottom: 14px; animation: float 3s ease-in-out infinite; }
+.quiz-idle p { font-weight: 800; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+
+/* Question items */
+.quiz-q { margin-bottom: 16px; }
+.quiz-q-text { font-weight: 800; font-size: .9rem; color: var(--text); margin-bottom: 8px; line-height: 1.4; }
+.quiz-q-type { font-size: .66rem; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: #a78bfa; margin-bottom: 5px; }
+.quiz-opts { display: flex; flex-direction: column; gap: 6px; }
+.qopt {
+  padding: 10px 13px;
+  border: 2px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  font-family: 'Nunito', sans-serif;
+  font-size: .87rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+  color: var(--text);
+}
+.qopt:hover:not(:disabled) { border-color: #818cf8; background: #eef2ff; transform: translateX(3px); }
+.qopt.selected { border-color: var(--indigo); background: #eef2ff; color: var(--indigo-dark); }
+.qopt.correct  { border-color: #16a34a !important; background: #dcfce7 !important; color: #15803d !important; }
+.qopt.wrong    { border-color: #dc2626 !important; background: #fee2e2 !important; color: #b91c1c !important; }
+.qopt:disabled { cursor: not-allowed; transform: none !important; }
+
+.quiz-score { background: linear-gradient(135deg,#eef2ff,#e0e7ff); border-radius: 14px; padding: 14px 18px; text-align: center; margin-top: 10px; }
+.quiz-score-big { font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--indigo-dark); }
+.quiz-score-msg { font-weight: 800; font-size: .87rem; color: var(--indigo); margin-top: 3px; }
+.quiz-panel-footer { padding: 12px 18px; border-top: 2px solid #e0e7ff; flex-shrink: 0; }
+
+/* ─── Empty / loading state ─── */
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 48px 20px; text-align: center; }
+.empty-emoji { font-size: 60px; margin-bottom: 14px; animation: float 3s ease-in-out infinite; }
+.empty-state p { color: var(--muted); font-weight: 800; font-size: .95rem; }
+
+/* ─── Buttons ─── */
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Fredoka One', cursive;
+  font-size: .93rem;
+  cursor: pointer;
+  transition: transform .15s, opacity .2s;
+  letter-spacing: .04em;
+}
+.btn:hover:not(:disabled) { transform: translateY(-2px); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+.btn-green  { background: linear-gradient(135deg,#4ade80,#22c55e); color: #fff; box-shadow: 0 4px 12px rgba(74,222,128,.3); }
+.btn-blue   { background: linear-gradient(135deg,#38bdf8,#0ea5e9); color: #fff; box-shadow: 0 4px 12px rgba(56,189,248,.3); }
+.btn-red    { background: linear-gradient(135deg,#fb7185,#f43f5e); color: #fff; box-shadow: 0 4px 12px rgba(251,113,133,.3); }
+.btn-purple { background: linear-gradient(135deg,#a78bfa,#7c3aed); color: #fff; box-shadow: 0 4px 12px rgba(167,139,250,.3); }
+.btn-ghost  { background: #f1f5f9; color: #475569; }
+.btn-sm     { padding: 8px 14px; font-size: .82rem; border-radius: 10px; }
+.btn-lg     { padding: 15px 22px; font-size: 1.3rem; width: 100%; border-radius: 16px; }
+
+/* Mic countdown */
+.countdown-disp {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg,var(--yellow),#f59e0b);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.2rem;
+  text-align: center;
+  animation: bop .5s infinite;
+}
+
+/* Tip box */
+.tip-box { background: #fefce8; border-radius: 12px; padding: 11px 14px; border: 2px solid #fde68a; margin-bottom: 14px; font-size: .83rem; font-weight: 700; color: #92400e; line-height: 1.5; }
+.tip-title { font-family: 'Fredoka One', cursive; color: #d97706; margin-bottom: 3px; font-size: .9rem; }
+
+/* Footer */
+footer { text-align: center; padding: 12px 0 6px; font-size: .66rem; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: .15em; flex-shrink: 0; }
+
+/* ─── Animations ─── */
+@keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+@keyframes bop     { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+@keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.55} }
+@keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.slide-up { animation: slideUp .3s ease; }
+
+/* ─── Mobile: Stack vertically ─── */
+@media (max-width: 768px) {
+  .app-shell { padding: 10px; gap: 10px; }
+  .split-view { flex-direction: column; }
+  .story-panel { flex: none; min-height: 60vh; }
+  .quiz-panel  {
+    flex: none;
+    position: static;   /* un-stick on mobile */
+    max-height: none;
+    min-height: 400px;
+  }
+  .story-text.prose { font-size: .95rem; }
+}
+@media (max-width: 480px) {
+  .header-left h1 { font-size: 1.25rem; }
+  .level-badge .val { font-size: 1.6rem; }
+  .story-text { font-size: .93rem !important; }
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ─── Header ─── -->
+  <header class="header">
+    <div class="header-left">
+      <h1>📚 Reading Buddy</h1>
+      <p>Fountas &amp; Pinnell Levels A–Z</p>
+    </div>
+    <div class="header-right">
+      <div class="level-badge">
+        <div class="lbl">Current Level</div>
+        <div class="val" id="hdr-level">A</div>
+        <div class="desc" id="hdr-desc">Emergent</div>
+        <div class="streak-bar" id="streak-bar"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── Level Picker ─── -->
+  <div class="level-picker" id="level-picker">
+    <h2>🎯 Choose a Level</h2>
+    <div class="level-grid" id="level-grid"></div>
+  </div>
+
+  <!-- ─── Split View (hidden until a level is chosen) ─── -->
+  <div class="split-view" id="split-view" style="display:none;">
+
+    <!-- LEFT: Story Panel -->
+    <div class="story-panel" id="story-panel">
+      <div class="story-panel-header">
+        <div class="story-top">
+          <div class="story-meta">
+            <span class="pill pill-green" id="story-level-pill">Level A</span>
+            <span class="pill pill-blue" id="story-num-pill">Story 1</span>
+            <span class="pill pill-purple" id="story-tier-pill">Emergent</span>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="showLevelPicker()">🎯 Levels</button>
+            <button class="btn btn-blue btn-sm" onclick="loadStory()">New Story</button>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="prog-label">Level Progress</span>
+            <span id="prog-count">0 / 2 reads to advance</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="story-panel-body">
+        <div id="story-area">
+          <div class="empty-state">
+            <span class="empty-emoji">📖</span>
+            <p>Tap "New Story" to begin!</p>
+          </div>
+        </div>
+        <div id="results-area"></div>
+      </div>
+      <div class="mic-controls" id="mic-controls" style="display:none;"></div>
+    </div>
+
+    <!-- RIGHT: Quiz Panel -->
+    <div class="quiz-panel" id="quiz-panel">
+      <div class="quiz-panel-header">
+        <h2>📝 Comprehension</h2>
+        <div class="quiz-sub" id="quiz-sub">Read the story, then answer the questions.</div>
+      </div>
+      <div class="quiz-panel-body" id="quiz-body">
+        <div class="quiz-idle">
+          <div class="quiz-idle-emoji">🤔</div>
+          <p>Your comprehension questions will appear here after you load a story!</p>
+        </div>
+      </div>
+      <div class="quiz-panel-footer" id="quiz-footer" style="display:none;">
+        <button class="btn btn-purple" style="width:100%;" onclick="submitQuiz()">✓ Check My Answers</button>
+      </div>
+    </div>
+
+  </div><!-- /split-view -->
+
+  <footer>Reading Buddy · Levels A–Z · Fountas &amp; Pinnell Inspired</footer>
+
+</div><!-- /app-shell -->
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENT ENGINE
+   
+   TIER 1 — Levels A–I  (50–150 words): 3–4 simple literal-retrieval Qs
+   TIER 2 — Levels J–P  (150–400 words): 5 Qs — inference + vocabulary
+   TIER 3 — Levels Q–Z  (400+ words): 5–6 Qs — theme, author's purpose, analysis
+   
+   Q TYPE LABELS
+     "Literal"       — find it directly in the text
+     "Inference"     — read between the lines
+     "Vocabulary"    — word meaning in context
+     "Theme"         — big idea / lesson
+     "Author's Purpose" — why the author wrote this / craft choices
+     "Analysis"      — evaluate and compare evidence
+   
+   HOW TO ADD STORIES
+   Each level is an array of story objects:
+   {
+     title:  "Story Title",
+     text:   "Story text goes here.",
+     q: [
+       { type: "Literal", q: "Question text?", opts: ["A","B","C","D"], a: 0 },
+       ...
+     ]
+   }
+   The `a` property is the 0-based index of the correct option.
+═══════════════════════════════════════════════════════════════════════════ */
+
+const STORIES = {
+
+/* ── TIER 1: Levels A–I  (50–150 words · 3–4 Literal questions) ── */
+
+A: [
+  {
+    title: "My Dog",
+    text: "I have a dog.\nMy dog is big.\nMy dog is brown.\nHe runs fast.\nHe likes to play.\nI love my dog.",
+    q: [
+      { type:"Literal", q:"What color is the dog?", opts:["Black","Brown","White","Yellow"], a:1 },
+      { type:"Literal", q:"What does the dog like to do?", opts:["Sleep","Eat","Play","Swim"], a:2 },
+      { type:"Literal", q:"How does the dog run?", opts:["Slowly","Fast","Quietly","Sadly"], a:1 }
+    ]
+  },
+  {
+    title: "The Red Ball",
+    text: "I have a red ball.\nIt is big and round.\nI throw the ball up.\nIt comes back down.\nI catch it!\nThe ball is fun.",
+    q: [
+      { type:"Literal", q:"What color is the ball?", opts:["Blue","Green","Red","Orange"], a:2 },
+      { type:"Literal", q:"What shape is the ball?", opts:["Square","Round","Flat","Long"], a:1 },
+      { type:"Literal", q:"What does the child do with the ball?", opts:["Kick it","Paint it","Throw it up","Roll it away"], a:2 }
+    ]
+  },
+  {
+    title: "I See Rain",
+    text: "I look out the window.\nI see rain.\nThe rain is cold.\nThe rain is wet.\nI put on my boots.\nI jump in a puddle!\nSplash!",
+    q: [
+      { type:"Literal", q:"What does the child see out the window?", opts:["Snow","Sun","Rain","Wind"], a:2 },
+      { type:"Literal", q:"What does the child put on?", opts:["A hat","Boots","A coat","Mittens"], a:1 },
+      { type:"Literal", q:"What does the child jump in?", opts:["A puddle","A river","A pool","A lake"], a:0 }
+    ]
+  }
+],
+
+B: [
+  {
+    title: "At the Park",
+    text: "We go to the park.\nI see a big slide.\nI go up, up, up.\nThen I go down!\nMom sits on a bench.\nDad pushes me on the swing.\nI love the park!",
+    q: [
+      { type:"Literal", q:"Where do they go?", opts:["School","The store","The park","The beach"], a:2 },
+      { type:"Literal", q:"What does Dad do?", opts:["Slides down","Sits on a bench","Pushes the swing","Buys food"], a:2 },
+      { type:"Literal", q:"Where does Mom sit?", opts:["On a swing","On a bench","On the grass","On a slide"], a:1 }
+    ]
+  },
+  {
+    title: "Baby Bird",
+    text: "A baby bird is in a nest.\nThe nest is in a tree.\nMom bird brings a worm.\nThe baby bird eats it.\nNow the baby bird is full.\nIt goes to sleep.",
+    q: [
+      { type:"Literal", q:"Where is the nest?", opts:["In the grass","In a tree","On a roof","Under a rock"], a:1 },
+      { type:"Literal", q:"What does Mom bird bring?", opts:["Seeds","Berries","A worm","Water"], a:2 },
+      { type:"Literal", q:"What does the baby bird do after eating?", opts:["Flies away","Sings","Goes to sleep","Plays"], a:2 }
+    ]
+  },
+  {
+    title: "My Cat Naps",
+    text: "My cat is named Boo.\nBoo is gray and white.\nBoo likes to nap.\nShe naps on the bed.\nShe naps on the chair.\nShe even naps in the sun!\nBoo is a sleepy cat.",
+    q: [
+      { type:"Literal", q:"What is the cat's name?", opts:["Moo","Boo","Rue","Coo"], a:1 },
+      { type:"Literal", q:"What colors is the cat?", opts:["Orange and black","Gray and white","Brown and tan","Black and white"], a:1 },
+      { type:"Literal", q:"What does Boo like to do?", opts:["Play","Run","Nap","Eat"], a:2 }
+    ]
+  }
+],
+
+C: [
+  {
+    title: "The Little Seed",
+    text: "I plant a little seed in the ground.\nI water it every day.\nThe sun shines down on it.\nFirst a small green shoot comes up.\nThen leaves grow.\nLast, a big yellow flower blooms.\nI grew a flower all by myself!",
+    q: [
+      { type:"Literal", q:"Where does the child plant the seed?", opts:["In a pot","In the ground","In a box","In the sand"], a:1 },
+      { type:"Literal", q:"What color is the flower?", opts:["Red","Pink","Blue","Yellow"], a:3 },
+      { type:"Literal", q:"What comes up first from the seed?", opts:["A flower","Leaves","A green shoot","A root"], a:2 },
+      { type:"Literal", q:"What does the child do to the seed every day?", opts:["Sing to it","Water it","Move it","Cover it"], a:1 }
+    ]
+  },
+  {
+    title: "Snow Day",
+    text: "It snowed last night.\nEverything is white.\nSchool is closed today.\nI put on my mittens and my coat.\nMy friend and I build a snowman.\nWe give him a carrot nose.\nWe laugh and play all day.",
+    q: [
+      { type:"Literal", q:"When did it snow?", opts:["This morning","Last night","Yesterday afternoon","A week ago"], a:1 },
+      { type:"Literal", q:"What do they give the snowman?", opts:["A scarf","A hat","A carrot nose","Stick arms"], a:2 },
+      { type:"Literal", q:"Why is school closed?", opts:["It is a holiday","It snowed","It is the weekend","The teacher is sick"], a:1 }
+    ]
+  }
+],
+
+D: [
+  {
+    title: "The Lost Mitten",
+    text: "Sam had two mittens this morning.\nBut now he can only find one!\nHe looks in his backpack.\nHe looks under the chair.\nHe looks in his coat pocket.\nSuddenly his mom says, 'Sam! It was on your head!'.\nSam laughs. He had it all along.",
+    q: [
+      { type:"Literal", q:"What is Sam looking for?", opts:["A hat","A mitten","A boot","A scarf"], a:1 },
+      { type:"Literal", q:"Where does Sam look first?", opts:["Under the chair","In his pocket","In his backpack","In his desk"], a:2 },
+      { type:"Literal", q:"Where was the missing mitten?", opts:["Under the chair","In his pocket","On his head","In his backpack"], a:2 },
+      { type:"Literal", q:"How does Sam feel at the end?", opts:["Sad","Scared","Angry","He laughs"], a:3 }
+    ]
+  },
+  {
+    title: "A Trip to the Library",
+    text: "Mia and her dad go to the library every Saturday.\nMia loves to pick out books.\nToday she picks two books about dinosaurs and one book about the ocean.\nThe librarian scans the books.\nMia has two weeks to read them.\nShe can't wait to start!",
+    q: [
+      { type:"Literal", q:"When do Mia and her dad go to the library?", opts:["Every Friday","Every Saturday","Every Sunday","Every Wednesday"], a:1 },
+      { type:"Literal", q:"How many books does Mia pick?", opts:["Two","Three","Four","One"], a:1 },
+      { type:"Literal", q:"How long does Mia have to read the books?", opts:["One week","Ten days","Two weeks","One month"], a:2 }
+    ]
+  }
+],
+
+E: [
+  {
+    title: "The Very Muddy Pig",
+    text: "Pig lived on a farm. Every morning, Pig ate corn and drank cold water. But Pig's favorite thing was the big mud puddle by the fence. Pig would roll and splash and snort with joy. Farmer Ben did not like the mess. 'Pig!' he would call. 'You are filthy!' But Pig did not mind one bit. Mud kept her cool on hot days, and it felt just wonderful.",
+    q: [
+      { type:"Literal", q:"Where did Pig live?", opts:["In a zoo","On a farm","In a forest","In a city"], a:1 },
+      { type:"Literal", q:"What was Pig's favorite thing?", opts:["Eating corn","Drinking water","The mud puddle","Running fast"], a:2 },
+      { type:"Literal", q:"Why did mud feel wonderful to Pig?", opts:["It smelled nice","It was funny","It kept her cool on hot days","It was colorful"], a:2 },
+      { type:"Literal", q:"What did Farmer Ben think about the mud?", opts:["He liked it","He didn't mind","He did not like the mess","He joined in"], a:2 }
+    ]
+  },
+  {
+    title: "Making Lemonade",
+    text: "It was a hot summer day. Ana wanted to make lemonade. She squeezed six lemons into a pitcher. She added water and sugar. Then she stirred it all up. She poured a glass and took a sip. It was too sour! She added more sugar and stirred again. This time it was perfect. She sold cups of lemonade for fifty cents each.",
+    q: [
+      { type:"Literal", q:"How many lemons did Ana squeeze?", opts:["Four","Five","Six","Seven"], a:2 },
+      { type:"Literal", q:"Why did Ana add more sugar?", opts:["It was too sweet","It was too watery","It was too sour","It was too cold"], a:2 },
+      { type:"Literal", q:"How much did Ana charge for lemonade?", opts:["Twenty-five cents","Fifty cents","One dollar","Free"], a:1 }
+    ]
+  }
+],
+
+F: [
+  {
+    title: "The Brave Little Turtle",
+    text: "Tommy was a small turtle who was afraid of deep water. All the other turtles swam far out into the pond. Tommy only paddled at the edge. One afternoon, a dragonfly landed on a lily pad right in the middle of the pond. Tommy wanted a closer look more than anything. He took a deep breath and began to swim. He paddled and paddled. He made it to the lily pad! The dragonfly winked at him. Tommy smiled. He had done it.",
+    q: [
+      { type:"Literal", q:"What was Tommy afraid of?", opts:["Loud noises","Big animals","Deep water","The dark"], a:2 },
+      { type:"Literal", q:"What landed on the lily pad?", opts:["A butterfly","A bee","A dragonfly","A frog"], a:2 },
+      { type:"Literal", q:"Where was the lily pad?", opts:["At the edge of the pond","In the middle of the pond","On the shore","In a tree"], a:1 },
+      { type:"Literal", q:"How did Tommy feel at the end?", opts:["Tired and sad","Scared and cold","Proud — he had done it","Disappointed"], a:2 }
+    ]
+  }
+],
+
+G: [
+  {
+    title: "Night Sky Watcher",
+    text: "Every clear night, Grandpa Leo takes his telescope out to the back field. He says the best time to look is after nine o'clock, when the sky is really dark. Last Friday, he let me look through the telescope for the first time. I could see craters on the moon! They looked like hundreds of tiny bowls. Grandpa said some craters were made by rocks from space called meteorites. I want to learn every crater's name someday.",
+    q: [
+      { type:"Literal", q:"What does Grandpa Leo bring to the field?", opts:["A camera","A telescope","Binoculars","A flashlight"], a:1 },
+      { type:"Literal", q:"What did the craters look like through the telescope?", opts:["Mountains","Rivers","Tiny bowls","Stars"], a:2 },
+      { type:"Literal", q:"What made the craters, according to Grandpa?", opts:["Explosions","Rain","Meteorites","Wind"], a:2 },
+      { type:"Literal", q:"What does the narrator want to do someday?", opts:["Build a telescope","Travel to the moon","Learn every crater's name","Be an astronaut"], a:2 }
+    ]
+  }
+],
+
+H: [
+  {
+    title: "The School Garden",
+    text: "Room 9 started a garden in April. First we dug up the soil and removed all the rocks. Then we planted seeds in neat rows. We put up little signs so we would remember what was growing where. Every Tuesday, two students were chosen to water the plants. By June, we had tomatoes, lettuce, and three kinds of herbs. Chef Maria from the school kitchen made a salad with our lettuce. It was the best salad anyone had ever tasted.",
+    q: [
+      { type:"Literal", q:"When did Room 9 start the garden?", opts:["March","April","May","June"], a:1 },
+      { type:"Literal", q:"Who watered the plants?", opts:["The teacher only","Two chosen students each Tuesday","Everyone each day","The principal"], a:1 },
+      { type:"Literal", q:"Who made a salad with the lettuce?", opts:["The teacher","The students","Chef Maria","The principal"], a:2 },
+      { type:"Literal", q:"What did they plant?", opts:["Tomatoes, lettuce, and herbs","Carrots, beans, and peas","Flowers and tomatoes","Corn and squash"], a:0 }
+    ]
+  }
+],
+
+I: [
+  {
+    title: "The Wolf Who Cried Wolf",
+    text: "There was once a shepherd boy who guarded the village flock. One slow afternoon he shouted 'Wolf! Wolf! A wolf is chasing the sheep!' The villagers ran up the hill — but found no wolf. The boy laughed at the prank. A few days later he did it again, and again they came. Again there was no wolf. Then one day a real wolf crept out of the forest and scattered the sheep. The boy cried 'Wolf!' with all his might, but not a single villager came. They didn't believe him anymore. When the wolf had gone, the village elder said quietly, 'Nobody believes a liar, even when he is telling the truth.'",
+    q: [
+      { type:"Literal", q:"Why did the boy shout 'Wolf!' the first time?", opts:["A wolf really appeared","He was practicing","As a prank to trick the villagers","He was afraid of the dark"], a:2 },
+      { type:"Literal", q:"What happened when a real wolf came?", opts:["The villagers came quickly","The wolf ran away on its own","No one came because they didn't believe him","The sheep were safe"], a:2 },
+      { type:"Literal", q:"What lesson did the village elder share?", opts:["Wolves are dangerous","Keep watch at night","Nobody believes a liar, even when telling the truth","Always carry a horn"], a:2 },
+      { type:"Literal", q:"How many times did the boy cry 'Wolf!' as a trick?", opts:["Once","Twice","Three times","Four times"], a:1 }
+    ]
+  }
+],
+
+/* ── TIER 2: Levels J–P  (150–400 words · 5 Qs — inference + vocabulary) ── */
+
+J: [
+  {
+    title: "The Hermit Crab's New Home",
+    text: "Deep on the ocean floor, a hermit crab named Clive was having a serious problem. His shell had become far too small. Every time he pulled himself inside, his legs stuck out the back, which was both embarrassing and cold.\n\nClive shuffled along the sandy bottom, keeping his eyes wide open. He peeked into a pointy cone shell — too sharp inside. He tried a smooth round shell — too heavy to carry. He wedged himself into a long whelk shell — too twisty.\n\nJust when Clive was beginning to give up hope, he spotted a beautiful pearly shell resting against a coral reef. He circled it three times. He tapped it gently to make sure nothing was living inside. Then, with one smooth movement, he backed right in.\n\nIt fit perfectly. The shell was roomy but not too big, smooth but not too heavy. Clive felt his muscles relax for the first time in weeks. He emerged from the opening, wiggled his antennae happily, and set off to explore the reef in his wonderful new home.",
+    q: [
+      { type:"Literal",   q:"Why does Clive need a new shell?", opts:["His shell is broken","His shell is too small — his legs stick out","He wants a prettier one","He lost his shell in a storm"], a:1 },
+      { type:"Inference", q:"Why does Clive tap the shell gently before moving in?", opts:["To see if it sounds nice","To make sure another creature isn't already living inside","To test if it will break","To call his friends over"], a:1 },
+      { type:"Inference", q:"How does Clive feel after finding the perfect shell? What clues tell you?", opts:["Tired — he immediately goes to sleep","Nervous — he keeps circling it","Relieved and happy — his muscles relax and he wiggles his antennae","Disappointed — the shell is still not right"], a:2 },
+      { type:"Vocabulary", q:"What does the word 'emerged' mean in the last paragraph?", opts:["Swam away quickly","Came out of the shell","Disappeared inside","Called for help"], a:1 },
+      { type:"Inference", q:"What does this story suggest about finding the right fit?", opts:["The first option is always the best","Giving up is sometimes necessary","It may take several tries, but the right choice is worth waiting for","Bigger is always better"], a:2 }
+    ]
+  }
+],
+
+K: [
+  {
+    title: "A Different Kind of Race",
+    text: "Everyone in Maplewood School knew that Jordan was the fastest runner in Grade 4. He had won Field Day three years in a row, and he wore his medals to school on special occasions. When the spring race was announced, Jordan expected to win easily.\n\nWhat Jordan did not expect was Priya. She had moved to the school in January, quiet and bookish, and nobody had ever seen her run. But on race day she crouched at the starting line with a calm, focused expression that Jordan had never seen on another kid's face.\n\nThe starter's whistle blew. Jordan shot forward and led for the first two hundred metres. Then, around the final bend, he heard footsteps — steady, rhythmic, getting louder. Priya did not sprint past him dramatically. She simply ran steadily, and Jordan ran out of speed before she ran out of stride.\n\nAfter the race, Jordan walked over and extended his hand. 'That was really something,' he said honestly. 'Will you teach me how you pace yourself?' Priya shook his hand and smiled. 'Only if you help me with my starts,' she said. They practised together every week after that.",
+    q: [
+      { type:"Literal",   q:"How many times had Jordan won Field Day?", opts:["Two","Three","Four","Five"], a:1 },
+      { type:"Inference", q:"Why does the author say Priya had 'a calm, focused expression that Jordan had never seen on another kid's face'?", opts:["To show she was angry","To show she was bored","To hint that she was more experienced and prepared than Jordan expected","To show she was nervous"], a:2 },
+      { type:"Inference", q:"How did Priya win the race?", opts:["She sprinted very fast at the start","She tripped Jordan","She ran with a steady pace and outlasted him","She cheated"], a:2 },
+      { type:"Vocabulary", q:"What does 'pace yourself' mean in this story?", opts:["Run as fast as you can immediately","Control your speed so you have energy throughout a long run","Stop and rest frequently","Warm up before running"], a:1 },
+      { type:"Inference", q:"What does Jordan's offer to shake Priya's hand and his question tell us about his character?", opts:["He is a poor loser","He is gracious and willing to learn from others","He is pretending to be friendly","He is embarrassed about losing"], a:1 }
+    ]
+  }
+],
+
+L: [
+  {
+    title: "The Blackout",
+    text: "The power went out on a Tuesday evening in November. The whole street went dark at once, and for a moment everyone was startled by how complete the silence was — no hum of refrigerators, no glow from televisions, nothing.\n\nEight-year-old Marcus was in the middle of a video game. He groaned loudly and slumped on the couch. But his grandmother, Nana Bea, lit three candles and set them on the kitchen table as calmly as if this happened every day. 'Come,' she said. 'I'll teach you to play cards.'\n\nNana Bea had grown up without electricity in a small town in Jamaica. She knew five hundred card games, or so it seemed to Marcus. They played Crazy Eights, then Snap, then a Jamaican game called Donkey that made Marcus laugh so hard his stomach hurt.\n\nAt some point, Marcus realized he had completely forgotten about his video game. The candles made everyone's face look warm and golden, and Nana Bea told stories about her childhood while they played.\n\nWhen the power returned two hours later, Marcus looked at the TV screen blinking back to life and decided he wasn't quite ready to return to it yet.",
+    q: [
+      { type:"Literal",   q:"What was Marcus doing when the power went out?", opts:["Reading a book","Playing a video game","Eating dinner","Watching television"], a:1 },
+      { type:"Inference", q:"Why does the author say Nana Bea lit the candles 'as calmly as if this happened every day'?", opts:["She was used to power cuts","She had planned the power cut","She was pretending not to be scared","She didn't notice the lights were off"], a:0 },
+      { type:"Inference", q:"What does Marcus's reaction when the power returns tell us?", opts:["He was relieved the power was back","He had so much fun that he wasn't eager to go back to screens","He was angry the power took so long","He wanted to tell Nana Bea to stop talking"], a:1 },
+      { type:"Vocabulary", q:"What does 'startled' mean in the first paragraph?", opts:["Excited and pleased","Suddenly surprised or shocked","Confused and lost","Bored and disappointed"], a:1 },
+      { type:"Inference", q:"What is the main idea the author seems to be suggesting in this story?", opts:["Electricity is very important","Card games are better than video games","Time spent with family and away from screens can be unexpectedly valuable","Power outages are dangerous"], a:2 }
+    ]
+  }
+],
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LEVELS M, N, O, P — FULL SHOWCASE STORIES
+   Medium-length (150–400 words) · 5 Qs — inference, vocabulary, theme
+═══════════════════════════════════════════════════════════════════════ */
+
+M: [
+  {
+    title: "The Cartographer's Daughter",
+    text: "Before GPS, before satellites, before even reliable roads, mapmakers were among the most important people in the world. They travelled to unmapped places, measured distances on foot, and returned with charts that allowed everyone else to find their way. Mira's father was one of these cartographers, and he was gone for months at a time.\n\nMira had grown up in a house covered in maps. They hung on every wall, lay rolled in wooden tubes in every corner, and were spread across the dining table so frequently that the family ate breakfast around the edges of coastlines and mountain ranges. Mira knew how to read a compass before she could read a book.\n\nWhat troubled her was that none of the maps showed where her father was right now. They showed the places he had already been — the ranges he had measured, the rivers he had traced. But the space between 'he left' and 'he will come back' was blank on every chart.\n\nOne afternoon, Mira took a clean piece of paper and made her own map. She drew their house in the centre. She drew the road that ran in front of it, and the bakery at the corner, and the school, and the field where she played. She labelled everything carefully. At the right edge of the paper, she drew a small figure on horseback and wrote, in her neatest letters: 'Father — returning.'\n\nWhen her father came home, he found the map on the kitchen table. He studied it for a long moment. 'This is the most important map I have ever seen,' he said quietly. 'And you have placed me exactly where I belong.'",
+    q: [
+      { type:"Literal",   q:"What was Mira's father's job?", opts:["A sailor","A cartographer — a mapmaker","A soldier","A baker"], a:1 },
+      { type:"Vocabulary", q:"What does the word 'cartographer' mean, based on context clues in the story?", opts:["A person who draws portraits","A person who makes maps","A person who travels for fun","A person who builds roads"], a:1 },
+      { type:"Inference", q:"Why does Mira feel troubled even though the house is full of maps?", opts:["She finds maps boring","None of the maps show where her father is right now — only where he has been","She cannot read any of the maps","The maps keep getting damaged"], a:1 },
+      { type:"Inference", q:"Why does Mira draw a figure on horseback at the edge of her map and label it 'Father — returning'?", opts:["She is practising her drawing skills","She wants to test her map-reading","She is holding onto hope and imagining her father on his way home","She wants to show the map to her teacher"], a:2 },
+      { type:"Theme",     q:"What is a central theme of this story?", opts:["Maps are more useful than GPS","Missing someone can inspire us to create something meaningful","Cartography is a dying profession","Children should not be left alone"], a:1 }
+    ]
+  },
+  {
+    title: "Saltwater Summer",
+    text: "The summer Maya turned eleven, her family rented a small cottage at the edge of a tidal marsh. She had expected a beach with white sand and waves. What she got instead was mud, reeds, and an overwhelming smell that her mother called 'the scent of life.'\n\nMaya spent the first three days inside, watching the water from the window. The marsh didn't look like much — brown and flat and tangled. But on the fourth day, boredom overcame disgust, and she pulled on rubber boots and stepped outside.\n\nBy noon she had found three things: a horseshoe crab the size of a dinner plate moving so slowly it seemed like a rock, a great blue heron that stood absolutely still for twenty minutes before striking at the water with a speed that took her breath away, and a small crab that had turned her boot into its temporary home.\n\nAfter that, the marsh was different. Not the marsh itself — it was exactly the same mud and reeds and smell. But Maya's eyes had changed. She started bringing a notebook, sketching creatures, recording tides, noting which birds appeared at which hours. She learned that the apparent emptiness of the marsh was itself a disguise. Under the surface and in the reeds, it was one of the most crowded places on earth.\n\n'I thought I hated it here,' she told her mother at the end of the summer. Her mother smiled and said nothing, which Maya had come to understand was its own kind of answer.",
+    q: [
+      { type:"Literal",   q:"What had Maya expected when she arrived at the cottage?", opts:["A marsh with wildlife","A white sandy beach with waves","A forest with hiking trails","A lake with a dock"], a:1 },
+      { type:"Inference", q:"Why does the author say 'boredom overcame disgust' on Maya's fourth day?", opts:["Maya suddenly liked the smell","Maya was too bored to stay inside and finally ventured out","Maya found a friend to explore with","Maya's parents made her go outside"], a:1 },
+      { type:"Vocabulary", q:"In the last paragraph, Maya says the apparent emptiness of the marsh was 'a disguise.' What does she mean?", opts:["The marsh pretended to be land","The marsh looked empty but was actually full of life","The marsh changed colour to trick her","The animals were hiding on purpose"], a:1 },
+      { type:"Inference", q:"Why does the author tell us that Maya began bringing a notebook and recording observations?", opts:["To show she was doing school homework","To show that Maya's relationship with the marsh had transformed from disgust to genuine curiosity","To suggest she wanted to become a scientist","To show she had nothing else to do"], a:1 },
+      { type:"Theme",     q:"Which theme is most clearly supported by the events of this story?", opts:["Nature is always beautiful from the start","Patience always leads to finding treasure","First impressions can be misleading — understanding something takes time and attention","City life is more exciting than rural life"], a:2 }
+    ]
+  },
+  {
+    title: "The Last Lighthouse Keeper",
+    text: "For one hundred and twelve years, there had always been a keeper at Gull Point Lighthouse. Edmund was the last of them. In three weeks, the light would be automated — a computer would do what he and his predecessors had done by hand — and Edmund would retire to a small house in town.\n\nHe didn't resent the technology. He understood it was efficient and probably safer. But some nights, watching the beam sweep across the black water, he thought about what would be lost.\n\nA lighthouse keeper didn't just operate a light. He recorded weather. He rescued sailors whose boats ran aground. He knew the tides by memory and could predict a storm by the smell of the air. He kept a logbook that was also, in its way, a diary — a record of the sea in all its moods.\n\n'Who will write in the logbook now?' he asked his niece, who had come to visit.\n\n'You could still write,' she said. 'Just not here.'\n\nEdmund considered this. On his last night, he sat at the desk and wrote a final entry. He recorded the weather: calm, with a low mist. He recorded the sound of the sea: gentle, rhythmic. Then he wrote something he had never written in forty years of logs: 'The sea does not know it is losing anything. But I know what I am leaving behind.'\n\nHe set the pen down and listened to the water for a long time before walking away.",
+    q: [
+      { type:"Literal",    q:"Why is Edmund leaving the lighthouse?", opts:["He is too old to climb the stairs","The lighthouse is being torn down","The light is being automated and no longer needs a keeper","He wants to travel"], a:2 },
+      { type:"Vocabulary", q:"What does 'predecessors' mean in the third paragraph?", opts:["Successors — those who come after","People who lived nearby","Those who held the position before him","Engineers who built the lighthouse"], a:0 },
+      { type:"Inference",  q:"Edmund says he doesn't resent the technology. What does this tell us about his character?", opts:["He dislikes modern life","He is fair-minded and can separate his feelings from his understanding of progress","He is pretending to be cheerful","He is glad to be leaving"], a:1 },
+      { type:"Inference",  q:"Why is the final logbook entry important to the story?", opts:["It records unusual weather","It shows Edmund breaking the rules for the first time","It shows him finally expressing what the lighthouse and his work meant to him personally","It is sent to the government"], a:2 },
+      { type:"Theme",      q:"What theme is most strongly present in this story?", opts:["Technology is always an improvement","Progress can come at the cost of something human and irreplaceable","Lighthouse keepers should be replaced sooner","The sea is dangerous and unpredictable"], a:1 }
+    ]
+  }
+],
+
+N: [
+  {
+    title: "The Bridge Builders",
+    text: "In 1883, when the Brooklyn Bridge opened after fourteen years of construction, it was the longest suspension bridge in the world. New Yorkers crossed it on foot, on horseback, and in carriages, marvelling at a structure that had seemed impossible just a generation earlier.\n\nFew people crossing that bridge thought about Emily Warren Roebling. Her father-in-law, John Roebling, had designed the bridge. Her husband, Washington Roebling, had been appointed chief engineer. But Washington contracted a crippling illness called caisson disease during the construction — caused by working in pressurised underwater chambers — and could no longer leave his apartment. He watched the construction site through a telescope from his bedroom window.\n\nFor eleven years, Emily served as the chief messenger between her bedridden husband and the construction crew. But she was far more than a messenger. She studied advanced mathematics, cable construction, and bridge engineering to understand every aspect of the project. She became the primary supervisor on site, making critical decisions and solving problems that arose.\n\nWhen the bridge opened, Emily was the first person to cross it — carrying a rooster, the traditional symbol of victory. The celebration credited the Roebling men. It was decades before historians fully recognised her role.\n\nThe Brooklyn Bridge stands today as a monument to engineering. It is also, whether or not the plaques acknowledge it, a monument to someone who learned an entirely new skill in her forties because a job needed to be done and she was the one who could do it.",
+    q: [
+      { type:"Literal",    q:"What illness prevented Washington Roebling from leaving his apartment?", opts:["Typhoid fever","Pneumonia","Caisson disease","Influenza"], a:2 },
+      { type:"Vocabulary", q:"What does 'contracted' mean in the sentence 'Washington contracted a crippling illness'?", opts:["Agreed to treat","Got or developed","Described in detail","Survived"], a:1 },
+      { type:"Inference",  q:"Why does the author emphasize that Emily was 'far more than a messenger'?", opts:["To show she also cooked meals for the workers","To correct the historical record and show she played a decisive engineering role","To explain why Washington recovered","To suggest she was paid unfairly"], a:1 },
+      { type:"Inference",  q:"What does the author suggest by saying 'the celebration credited the Roebling men'?", opts:["The men worked harder than Emily","Emily received the recognition she deserved","Emily's contributions were overlooked by those celebrating the bridge's opening","Women were not allowed at the opening ceremony"], a:2 },
+      { type:"Author's Purpose", q:"Why do you think the author ends with the phrase 'she was the one who could do it'?", opts:["To show that engineering is easy to learn","To emphasize Emily's determination and capability, reframing the bridge as her achievement too","To suggest anyone could have done the job","To argue the bridge should have been built differently"], a:1 }
+    ]
+  },
+  {
+    title: "The Memory Keeper",
+    text: "In the small village of Carrín on the west coast of Ireland, there was once a woman known as the Seanchaí — the memory keeper. Her name was Brigid, and her job, passed down through seven generations, was to remember.\n\nShe remembered which families had feuded three hundred years ago, and how the feud had ended. She remembered the year the blight came and which families had shared their food. She remembered songs that had not been written down, and stories about people whose graves had long since lost their names.\n\nYoung people sometimes asked her why it mattered — all this old knowing. 'Isn't everything recorded now?' one boy asked her. 'There are databases and archives and the internet.'\n\n'Archives tell you what happened,' Brigid said. 'I tell you what it felt like. Archives tell you that the Connolly family and the O'Brien family were neighbours. I know that when Maeve O'Brien was sick, it was Padraig Connolly who walked three miles in the rain to bring her medicine, and that their grandchildren never forgot it.'\n\nBrigid was not opposed to records and databases. She simply knew they preserved a different kind of truth. The warmth, the weight, the texture of a moment — these things did not survive in data.\n\nWhen Brigid grew very old, she spent months teaching a young woman named Sorcha everything she knew. The knowledge moved from one mind to another the way it always had — not through writing, but through the human voice, careful and close.",
+    q: [
+      { type:"Literal",    q:"What does the Irish word 'Seanchaí' mean in this story?", opts:["Memory keeper","Village elder","Storyteller for children","Writer of records"], a:0 },
+      { type:"Vocabulary", q:"What does 'archives' mean as used in this story?", opts:["Personal memories","Databases and official records of past events","Old buildings","A type of old story"], a:1 },
+      { type:"Inference",  q:"What is the key difference Brigid draws between archives and her own knowledge?", opts:["Archives are wrong and she is right","Archives record facts; she preserves feeling, texture, and human meaning","Archives are more important than memory","Archives are too expensive to maintain"], a:1 },
+      { type:"Inference",  q:"Why does Brigid teach Sorcha by speaking rather than writing things down?", opts:["Brigid cannot write","She feels writing would take too long","The knowledge is of a kind that passes most truly through human voice and relationship","Sorcha learns better by listening"], a:2 },
+      { type:"Theme",      q:"What does this story suggest about what can and cannot be preserved by technology?", opts:["Technology can preserve everything important","Human memory and oral tradition capture something that data and records cannot — the emotional truth of events","Old traditions should be replaced by modern records","Memory is less reliable than digital archives"], a:1 }
+    ]
+  },
+  {
+    title: "Twelve Thousand Feet",
+    text: "At twelve thousand feet above sea level, the air holds roughly sixty percent of the oxygen available at sea level. This is why climbers ascending high peaks must give their bodies time to acclimatise — to adjust slowly to thinner air. Moving too fast brings altitude sickness: headaches, nausea, confusion, and in severe cases, conditions that can be fatal.\n\nFor generations, the Sherpa people of Nepal have lived and worked at high elevations. Their bodies have adapted over centuries, with physiological changes that allow them to extract more oxygen from thin air. They have wider lungs, more efficient red blood cells, and a circulatory system that responds differently to altitude than those of people from lower elevations.\n\nWhen foreign expeditions began ascending Everest in the twentieth century, they depended heavily on Sherpa guides and porters. Early accounts often described the Sherpas simply as helpers or load-carriers, failing to acknowledge their expertise. The Sherpas knew the mountain's moods, its hidden crevasses, the signs of incoming storms. They kept climbers alive.\n\nTenzing Norgay was among the first two people to summit Everest in 1953 — alongside Edmund Hillary. For years, credit focused heavily on Hillary. Norgay himself said he would not reveal who placed the first foot on the summit, because it was a 'team effort.' That generosity of spirit did not make the oversight any less real.\n\nToday, Sherpa contributions are more widely recognised, and several Sherpas have summited Everest more times than any non-Sherpa climber in history. The mountain's story is, finally, beginning to be told in full.",
+    q: [
+      { type:"Literal",    q:"What percentage of sea-level oxygen is available at twelve thousand feet?", opts:["About forty percent","About fifty percent","About sixty percent","About eighty percent"], a:2 },
+      { type:"Vocabulary", q:"What does 'acclimatise' mean in the context of this passage?", opts:["To move to a different climate permanently","To exercise intensely to prepare for climbing","For the body to adjust gradually to a new environment","To breathe deeply to get more oxygen"], a:2 },
+      { type:"Inference",  q:"Why does the author mention that early accounts described Sherpas 'simply as helpers or load-carriers'?", opts:["To show that carrying loads was their only skill","To highlight that their expertise and knowledge were historically undervalued and misrepresented","To explain why climbing is dangerous","To show that expeditions were expensive"], a:1 },
+      { type:"Inference",  q:"What does Tenzing Norgay's refusal to say who stepped on the summit first reveal about his character?", opts:["He couldn't remember what happened","He was embarrassed about the climb","He was generous and valued the partnership over personal glory","He was told to say it was a team effort"], a:2 },
+      { type:"Author's Purpose", q:"What is the author's main purpose in writing this passage?", opts:["To warn readers about the dangers of altitude sickness","To explain the biology of the Sherpa people","To tell the story of the 1953 Everest expedition","To correct an incomplete historical record and recognise overlooked contributions"], a:3 }
+    ]
+  }
+],
+
+O: [
+  {
+    title: "The Colour Blind Painter",
+    text: "Charles Turner painted for forty-three years before a doctor told him what his wife had suspected for decades: he was colour blind. Specifically, he had a condition called deuteranopia, which made it difficult for him to distinguish between red and green. What looked vivid and contrasting to most people appeared, to Charles, as varying shades of the same muddy yellow-brown.\n\nThe revelation was, by any reasonable measure, shocking. But Charles's response surprised everyone who knew him. 'Well,' he said, 'that explains the reviews.'\n\nHis landscapes had always been described as unusual. Critics wrote about his 'otherworldly palette' and his 'dreamlike colour relationships.' A retrospective essay called his work 'boldly expressionistic, indifferent to the conventions of naturalistic colour.' Nobody had guessed the truth: Charles was simply painting what he saw.\n\nAfter the diagnosis, Charles did not change his style. He had no interest in using colour-corrective technology to repaint reality. He had spent four decades learning to see, and what he saw — muted, ambiguous, slightly strange — was his. His paintings were not mistakes. They were his genuine vision of the world.\n\n'You can't paint what you don't see,' he told a student once. 'But you can paint what you do see more honestly than anyone who is trying to paint what they think they should see. My only advantage is that I've never been able to pretend.'\n\nThe last decade of his career was his most celebrated. Critics who had once found his palette peculiar began to argue it was his greatest strength.",
+    q: [
+      { type:"Literal",    q:"What condition did the doctor tell Charles he had?", opts:["Macular degeneration","Cataracts","Deuteranopia — a form of colour blindness","Astigmatism"], a:2 },
+      { type:"Vocabulary", q:"What does 'retrospective' mean in the phrase 'a retrospective essay'?", opts:["An essay written in the future","An essay looking back at previous work","An essay written by a student","An essay criticising modern art"], a:1 },
+      { type:"Inference",  q:"Why does Charles say 'that explains the reviews' rather than expressing distress at the diagnosis?", opts:["He was too proud to show emotion","He used humour to cope with the news, and the diagnosis made sense of years of unusual critical responses","He didn't understand what colour blindness meant","He was relieved he could now retire"], a:1 },
+      { type:"Inference",  q:"What does Charles mean when he says 'My only advantage is that I've never been able to pretend'?", opts:["He believes other painters are dishonest","He means he paints his true perception rather than trying to match a conventional idea of what colours should look like","He has never tried to improve his technique","He considers his condition a disability"], a:1 },
+      { type:"Author's Purpose", q:"Why do you think the author chose to write about a colour blind painter rather than another kind of artist?", opts:["To explain the science of colour blindness","To argue that colour blindness is not a real disability","To show how a limitation can shape and define an artist's work in ways that become strengths","To criticise art critics for being wrong about Charles"], a:2 }
+    ]
+  },
+  {
+    title: "Letters to No One",
+    text: "When Aunt Rosario died, we found three hundred and twelve letters in her bedroom closet. They were bundled in elastic bands, sorted by year, and stored in old shoe boxes. Some were written on formal stationery. Others were on the backs of receipts or grocery lists.\n\nNone of them had ever been mailed. None of them had addresses or stamps. They were letters written to people Rosario had known, or people she had admired from a distance, or people she'd had arguments with and never resolved. There were letters to her parents, dead for thirty years. There were two letters to a teacher she had loved at fifteen. There was one letter, three pages long, to a stranger on a train she had spoken to for nine minutes in 1987 and never seen again.\n\nWe didn't know what to do with them. My mother said we should burn them, that Rosario wouldn't want us to read private things. My cousin said we should donate them to a library as a historical document of ordinary life. I said nothing for a long time.\n\nFinally I asked myself why someone would write three hundred and twelve letters they never intended to send. The answer, I think, is that Rosario didn't write them to reach other people. She wrote them to understand herself — to make sense of love and loss and the things that happen between people that are too important to leave unexamined but too private to share.\n\nThe letters were not for anyone. They were for her. And somehow that made them feel like the most intimate thing I had ever almost read.",
+    q: [
+      { type:"Literal",    q:"How many letters were found in Aunt Rosario's closet?", opts:["Thirty-two","One hundred and twelve","Three hundred and twelve","Two hundred"], a:2 },
+      { type:"Vocabulary", q:"What does 'intimate' mean in the final sentence?", opts:["Long and detailed","Deeply personal and private","Difficult to understand","Written in a foreign language"], a:1 },
+      { type:"Inference",  q:"Why does the author describe the different opinions about what to do with the letters?", opts:["To show the family argued constantly","To suggest all the options are wrong","To highlight how the letters raise questions about privacy, memory, and what belongs to the living","To explain what happened to the letters in the end"], a:2 },
+      { type:"Inference",  q:"What conclusion does the narrator reach about why Rosario wrote unsent letters?", opts:["She was too shy to post them","She enjoyed writing more than sending","She wrote them for herself — to understand her own feelings and make sense of relationships","She planned to send them someday but forgot"], a:2 },
+      { type:"Theme",      q:"What theme best describes this story?", opts:["Family relationships are always complicated","Writing can be a private act of self-understanding rather than a means of communication","Letters are more meaningful than digital messages","We should always share what we write"], a:1 }
+    ]
+  }
+],
+
+P: [
+  {
+    title: "The River That Forgot Its Name",
+    text: "There is a river in the borderlands between two countries that appears on maps under two different names — one in each language. It is called one thing by the farmers on the eastern bank, whose families have fished it for six generations, and another thing entirely by the families on the western bank, who have watered their orchards from it for just as long. Neither group is wrong. The river does not know what it is called.\n\nThis matters more than it sounds. When the two governments began negotiations over water rights in the 1990s, early meetings stalled repeatedly because each side used their own name for the river in legal documents. Translators translated the language but not the geography. It took three meetings before someone thought to bring a map and point at the water itself.\n\nThe name dispute was, in the end, resolved by leaving both names on official documents, separated by a slash. It was an unsatisfying solution that both sides could live with — which may be the definition of a good compromise.\n\nBut the river dispute also revealed something true about how people use names. We name things to claim them, to understand them, to carry them in memory. When two communities name the same thing differently, each name is a history — a record of how that thing entered that community's life and what it has meant to them.\n\nThe river flows regardless. It has been watering fields and feeding fish since before either language existed on its banks. Its indifference to the names we give it is, perhaps, the most honest thing about it.\n\nSometimes the most important conflicts are not about the thing itself but about what the thing represents to the people on either side of it.",
+    q: [
+      { type:"Literal",    q:"Why did the 1990s negotiations stall at first?", opts:["The water was too polluted to share","Both sides used different names for the river in legal documents","The governments disagreed on how to divide the water","There were no translators available"], a:1 },
+      { type:"Vocabulary", q:"What does the author mean by saying translators 'translated the language but not the geography'?", opts:["The translators made errors in their work","They converted words from one language to another but didn't realise both sides were referring to the same river","The maps were in the wrong language","The geography of the area was too complicated"], a:1 },
+      { type:"Inference",  q:"The author describes the slash compromise as 'unsatisfying but something both sides could live with.' What does this suggest about compromise?", opts:["Compromise always makes everyone happy","A real compromise often leaves both sides slightly dissatisfied but enables progress","The compromise was a failure","Only one side was satisfied"], a:1 },
+      { type:"Inference",  q:"Why does the author say the river's 'indifference to the names we give it is the most honest thing about it'?", opts:["Rivers cannot be named","The river proves that nature has no meaning","The river exists independently of human conflicts and naming — it simply is what it is, regardless of what we call it","The river's indifference made the negotiations easier"], a:2 },
+      { type:"Author's Purpose", q:"What is the author's purpose in using a river as the subject of this essay?", opts:["To teach readers about water rights law","To argue that one country should own the river","To use the river as a metaphor for how naming, identity, and conflict are intertwined — and how the thing itself often outlasts the argument around it","To describe the geography of borderlands"], a:2 }
+    ]
+  },
+  {
+    title: "What the Bees Know",
+    text: "A honeybee can communicate the exact location of a flower patch to its hive-mates using only movement. The waggle dance, as it is called, encodes direction relative to the sun and distance measured in the duration of the straight run of the dance. A bee that has found nectar will return to the hive and perform this dance, and other bees will decode it and fly to the correct location with surprising accuracy.\n\nWhen Karl von Frisch first published his research on the waggle dance in the 1940s, many scientists refused to believe it. The idea that an insect could encode and transmit symbolic information — information about a place it was not currently at — was considered impossible. Language, by common agreement, was a human capacity. Von Frisch spent twenty more years accumulating evidence before his findings were accepted. He eventually won the Nobel Prize.\n\nWhat is most interesting about the waggle dance is not that bees communicate, but how. The dance is not a learned behaviour. Every bee is born knowing how to dance and how to read the dance. The information is in the body before the bee has ever seen a flower.\n\nThis raises uncomfortable questions about the nature of knowledge. We tend to think of knowledge as something accumulated through experience. But the bee carries spatial knowledge — a relationship to the sun, a geometry of direction and distance — that it has never needed to learn.\n\nSome researchers now argue that the bee is not symbolic language in the way human language is, that it is a system constrained by instinct in ways that human language is not. Others disagree. The argument is ongoing. In the meantime, the bees continue to dance, indifferent to whether what they do counts as language.",
+    q: [
+      { type:"Literal",    q:"What does the waggle dance communicate to other bees?", opts:["The quality of the nectar found","The danger level near the hive","The direction and distance of a flower patch","The weather conditions outside"], a:2 },
+      { type:"Vocabulary", q:"What does 'symbolic information' mean in this passage?", opts:["Information drawn as a picture","Information that represents something not immediately present — like a dance representing a faraway location","Secret coded messages","Information stored in a database"], a:1 },
+      { type:"Inference",  q:"Why were many scientists reluctant to accept Von Frisch's findings?", opts:["He was not a credible scientist","His research was poorly designed","Symbolic communication was widely believed to be exclusively a human capacity","Bees were considered too dangerous to study"], a:2 },
+      { type:"Inference",  q:"What does the fact that every bee is born knowing how to dance suggest about knowledge?", opts:["Bees are more intelligent than humans","All knowledge is instinctive","Not all knowledge is learned — some knowledge can be built into a living thing from birth","Bees cannot actually learn anything"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end by saying the bees 'continue to dance, indifferent to whether what they do counts as language'?", opts:["To suggest bees are too simple to understand the debate","To argue that the debate is pointless","To remind readers that the bees and their behaviour exist regardless of the labels humans apply — and that the natural world doesn't wait for us to understand it","To show that Von Frisch's research was ultimately wrong"], a:2 }
+    ]
+  },
+  {
+    title: "The Understudy",
+    text: "In theatre, the understudy is the actor who learns every line, every movement, and every expression of a role they may never perform. They rehearse in empty theatres. They stand in the wings on opening night watching someone else take the bow. They are preparation made human — the shape of a thing that might never happen.\n\nMaria had been an understudy for eleven years. She had learned fourteen principal roles at four different companies. She had gone on twice — once for a broken ankle and once for a case of laryngitis — and both times received standing ovations. Then she stepped back into the wings and the principal returned.\n\nPeople asked her if it was frustrating. She always said the same thing: 'I know every role better than the people who play them.' And this was not boasting. The principal knows a role from inside it — from the pressure of performance, the heat of the lights, the specific relationship with that night's audience. The understudy knows it from outside, from watching hundreds of performances with analytical attention. The knowledge is different. Neither is complete without the other.\n\nWhen Maria was sixty-one, the company's director asked her to teach the next generation of actors. He did not ask the principals. He asked the woman who had spent four decades watching, learning, and carrying the readiness for a moment that might not come.\n\nOn the first day of the workshop, a student asked her what she had learned from never getting to perform. Maria looked at the student for a long moment. 'I performed every night,' she said. 'You just weren't watching.'",
+    q: [
+      { type:"Literal",    q:"How many principal roles had Maria learned over eleven years?", opts:["Seven","Eleven","Fourteen","Twenty"], a:2 },
+      { type:"Vocabulary", q:"What does 'analytical' mean in the phrase 'watching hundreds of performances with analytical attention'?", opts:["Emotional and personal","Careful, observational, and focused on understanding","Distracted and casual","Confused and overwhelmed"], a:1 },
+      { type:"Inference",  q:"What does Maria mean when she says the principal's knowledge and the understudy's knowledge are 'different' and 'neither is complete without the other'?", opts:["Principals and understudies should always perform together","Performance experience and analytical observation are both valuable forms of knowledge","Understudies are more knowledgeable than principals","Only the principal truly understands a role"], a:1 },
+      { type:"Inference",  q:"Why does the director ask Maria — not the principals — to teach the next generation?", opts:["The principals refused to teach","Maria was the cheapest option","Her decades of watchful, analytical attention gave her a depth of understanding the principals lacked","Maria was the most famous person available"], a:2 },
+      { type:"Theme",      q:"What does Maria's final line — 'I performed every night. You just weren't watching' — suggest about the nature of work and recognition?", opts:["Recognition is the only thing that matters in a career","Work done without an audience is not real work","Meaningful contribution does not require an audience — performance, preparation, and mastery have value even when unwitnessed","Actors are always misunderstood"], a:2 }
+    ]
+  }
+],
+
+/* ── TIER 3: Levels Q–Z  (400+ words · 5–6 Qs — theme, author's purpose, analysis) ── */
+
+/* ─── PLACEHOLDER TEMPLATE ─────────────────────────────────────────────────
+   To fill in a level, copy this object and replace the placeholder values.
+   Remove this comment block when done.
+   
+   {
+     title: "Story Title Here",
+     text: `Passage text goes here. Aim for 400+ words for Levels Q–Z.
+   
+   Indent paragraphs with a blank line between them for readability.
+   The story should include complex ideas, sophisticated vocabulary,
+   figurative language, and themes open to interpretation.`,
+     q: [
+       { type:"Literal",          q:"A direct comprehension question?", opts:["A","B","C","D"], a:0 },
+       { type:"Inference",        q:"A question requiring reading between the lines?", opts:["A","B","C","D"], a:0 },
+       { type:"Vocabulary",       q:"What does '[word]' mean in the context of paragraph X?", opts:["A","B","C","D"], a:0 },
+       { type:"Theme",            q:"Which theme is most clearly supported by this passage?", opts:["A","B","C","D"], a:0 },
+       { type:"Author's Purpose", q:"Why does the author choose to [technique/device]?", opts:["A","B","C","D"], a:0 },
+       { type:"Analysis",         q:"How does [element] in paragraph X connect to the passage's central idea?", opts:["A","B","C","D"], a:0 }
+     ]
+   }
+───────────────────────────────────────────────────────────────────────── */
+
+Q: [
+  {
+    title: "The Cartographer Who Drew Feelings",
+    text: `Emilio's grandfather had been a cartographer for the Mexican government for thirty-seven years. He had mapped rivers, mountain ranges, and the borders of ejidos — communal land parcels that had existed since long before Emilio was born. When Grandfather retired, he gave Emilio his drafting tools: a set of fine-tipped pens, a compass for drawing perfect circles, and a wooden ruler worn smooth along one edge from decades of use.
+
+Emilio expected to use the tools to draw the kind of maps he had seen in his grandfather's study — precise, factual, filled with contour lines and elevation numbers. Instead, the first thing he drew was a map of his school.
+
+Not the building itself, exactly. He drew the cafeteria large, larger than it actually was, because it felt enormous and loud and overwhelming. He drew the library small and tucked into a corner, the way it actually felt — secret, sheltered, apart from everything. The hallway between his classroom and the gymnasium he drew as very long, because the walk there always seemed to take forever when he was dreading gym class.
+
+When his grandfather saw the map, he did not laugh. He studied it for a long time, turning it slowly in his hands the way he examined official surveys.
+
+"This is not wrong," his grandfather said finally. "The ancient Aztec maps did not show distances as they were measured by a rope. They showed distances as they were experienced by a traveller — how difficult the terrain was, how long a journey felt in the body. Your map is in that tradition."
+
+Emilio had not known that. He had thought he was just drawing badly.
+
+His grandfather pulled a book from the shelf and opened it to a reproduction of a sixteenth-century indigenous map of central Mexico. It looked almost nothing like a modern map. Settlements were shown as footprints. Mountains were rounded humps, not contour lines. Rivers wound between them like living things.
+
+"Every map," his grandfather said, tapping the page, "is a set of choices about what matters. A government survey says: distances matter, elevations matter, borders matter. Your map says: feelings matter, experience matters. Neither map is the whole truth. But both maps are true."
+
+Emilio looked at his drawing again. The cafeteria still loomed large. The library was still small and safe in its corner. He picked up one of the fine-tipped pens and added a small star where his desk was — not because it was important on any official map, but because it was the centre of his world, and this was his map, and he was allowed to say so.`,
+    q: [
+      { type:"Literal",          q:"What did Emilio's grandfather give him when he retired?", opts:["A collection of historical maps","A set of drafting tools including fine-tipped pens, a compass, and a wooden ruler","A book about Aztec cartography","A government survey of their region"], a:1 },
+      { type:"Inference",        q:"Why does Emilio draw the hallway to the gymnasium as 'very long'?", opts:["He measured it incorrectly","The hallway is actually the longest in the school","He dreads gym class, so the walk feels longer than it is","He wants the map to be artistically interesting"], a:2 },
+      { type:"Vocabulary",       q:"Based on context, what do 'contour lines' most likely refer to?", opts:["Decorative borders drawn around a map","Lines on a map that represent elevation and the shape of terrain","The political borders between countries","A style of drawing used in ancient Mexico"], a:1 },
+      { type:"Analysis",         q:"How does the grandfather's explanation of Aztec maps connect to Emilio's drawing?", opts:["It proves that Emilio made factual errors in his map","It shows that maps representing felt experience have a long and legitimate history, reframing Emilio's 'mistake' as a tradition","It convinces Emilio to start drawing maps professionally","It explains why modern maps are more accurate than old ones"], a:1 },
+      { type:"Theme",            q:"Which theme is most strongly supported by this story?", opts:["Cartography is a dying art form","Children should study history before creating art","There is more than one valid way to represent truth — facts and feelings can both be forms of knowledge","Grandfathers are always the best teachers"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author have Emilio add a small star where his desk is at the very end of the story?", opts:["To show that Emilio has finally learned to draw maps correctly","To suggest that Emilio is self-centred","To illustrate that Emilio has accepted and claimed his own perspective as worthy — his experience is the centre of his own map","To hint that Emilio will become a famous cartographer one day"], a:2 }
+    ]
+  },
+  {
+    title: "The Silences Between Notes",
+    text: `Ms. Okafor had taught piano for twenty-two years, and she had a rule that confused every new student: she would stop them mid-piece and ask them to listen to the silences.
+
+"You are playing the notes," she would say. "You are not playing the music."
+
+Nine-year-old Priya had been playing piano for three years before she came to Ms. Okafor. Her previous teacher had praised her for accuracy — for hitting every note at exactly the right time. Priya was proud of her accuracy. She did not understand why Ms. Okafor looked mildly disappointed when she played a piece through without a single error.
+
+"What is music made of?" Ms. Okafor asked her one afternoon.
+
+"Notes," said Priya.
+
+"And?"
+
+Priya thought about it. "Rhythms? Time signatures?"
+
+"Silences," said Ms. Okafor. "Music is made of notes and silences in equal measure. A composer writes rests just as deliberately as they write notes. When you rush through a rest to get to the next note, you are erasing half of what the composer wrote."
+
+She played a short passage from a Beethoven sonata, then played it again — but this time she let the rests breathe, let each silence exist fully before the next note arrived. The difference was startling. The second version felt like it had space inside it, like a room rather than a wall.
+
+Priya began to pay attention to rests in a way she never had. She noticed that a rest at the right moment could feel like a held breath before something important. She noticed that some silences felt sad, and others felt expectant, and others felt like the musical equivalent of someone pausing to look out a window.
+
+"How does a silence feel sad?" she asked Ms. Okafor. "It's just nothing."
+
+"Is it?" said Ms. Okafor. "When someone you love stops speaking in the middle of a conversation, is that nothing?"
+
+Priya thought about the way her mother sometimes went quiet when she was upset — not angry-quiet, but a particular stillness that said more than words. She thought about how loud that silence was.
+
+At her next recital, Priya played with the same accuracy she always had. But she also played the rests. Afterward, her mother came to her with an expression Priya had not seen before — not just proud, but moved.
+
+"You played differently," her mother said. "Something was different."
+
+Priya nodded. She had played the notes. She had also played everything in between.`,
+    q: [
+      { type:"Literal",          q:"What had Priya's previous teacher praised her for?", opts:["Her ability to play with feeling","Her understanding of silences and rests","Her accuracy — hitting every note at the right time","Her knowledge of music theory"], a:2 },
+      { type:"Inference",        q:"Why does Ms. Okafor look 'mildly disappointed' even when Priya plays without a single error?", opts:["She expected Priya to play more difficult pieces","Priya plays the notes correctly but rushes through the rests, missing half of what the composer intended","She dislikes the piece Priya chose to play","She believes Priya has not practised enough"], a:1 },
+      { type:"Vocabulary",       q:"Ms. Okafor describes the second version of the passage as feeling 'like a room rather than a wall.' What does this comparison mean?", opts:["The music became louder and more powerful","The music felt enclosed and difficult to listen to","The music opened up and gained space and depth when the silences were honoured","The music sounded like it was being played in a large concert hall"], a:2 },
+      { type:"Analysis",         q:"How does the example of Priya's mother going quiet connect to Ms. Okafor's lesson about silence?", opts:["It shows that Priya's home life affects her playing","It illustrates that silence in real life — like silence in music — can communicate something meaningful rather than being 'nothing'","It proves that Ms. Okafor's lesson does not apply outside of music","It suggests Priya should talk to her mother more"], a:1 },
+      { type:"Theme",            q:"Which theme best captures the central idea of this story?", opts:["Natural talent matters more than practice","What is absent can be just as meaningful as what is present","Students should always trust their first teacher's methods","Recitals are the most important part of learning music"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author end the story with the line 'She had also played everything in between'?", opts:["To suggest Priya played extra notes the composer did not write","To show that Priya now understands that the spaces and silences are part of the music, not absences from it","To hint that Priya's technique has become sloppy","To indicate that Priya played a longer piece than expected"], a:1 }
+    ]
+  }
+],
+
+R: [
+  {
+    title: "The Man Who Collected Apologies",
+    text: `My great-uncle Desmond had a peculiar habit that embarrassed the rest of the family for decades. He kept a journal — not of events or ideas, but of apologies. Every time someone apologised to him sincerely, he wrote it down: the date, the person's name, what they were apologising for, and a brief note on whether he believed them.
+
+I discovered this when I was eleven and found the journal in a box of his things after he died. I expected it to be a record of grievances, a list of wrongs kept carefully so they would not be forgotten. What I found instead surprised me entirely.
+
+The entries were not bitter. They were almost tender. Uncle Desmond had noted not just what people said but how they said it — whether they looked at him or at the floor, whether their voice was steady or uncertain, whether they seemed relieved or still troubled after speaking. He had an eye for the specific details that distinguished a real apology from a performed one.
+
+"Marcus, hardware store, Tuesday," one entry read. "Apologised for giving me incorrect change — twice the amount he owed, which he noticed himself and came after me down the street to correct. Did not need to. Believed him completely. This one was about honesty, not guilt."
+
+Another: "Margaret, my sister, Christmas. Apologised for what she said in 1987. Eleven years. I could see how long she had been carrying it. She did not ask for anything in return, did not say 'I hope you can forgive me' — just said she was sorry and that she had been wrong. That is the hardest kind. Believed her. Felt lighter afterward myself."
+
+What struck me, reading through those pages, was that Uncle Desmond had not been collecting grievances at all. He had been collecting moments of human courage. A real apology, he seemed to understand, costs something. It requires admitting that you were wrong, which is one of the most difficult things a person can do, and it asks for nothing in return — a true apology does not negotiate.
+
+I had always thought of apologies as small social rituals, something you said to smooth things over. Uncle Desmond saw them as events — genuine, rare, and worth recording.
+
+I started my own journal the following week. I have not kept it as faithfully as he did. But I think about his pages often, especially when I find myself in the position of needing to apologise for something and feeling the temptation to soften it, to explain, to make it partly the other person's fault as well.
+
+Uncle Desmond's journal sits on my desk. It reminds me what a real one sounds like.`,
+    q: [
+      { type:"Literal",          q:"What did Uncle Desmond record in his journal?", opts:["Events from his daily life and personal reflections","Apologies he received — including the date, the person, what they apologised for, and whether he believed them","A list of wrongs done to him that he had not forgiven","Letters he had written but never sent"], a:1 },
+      { type:"Inference",        q:"The narrator says they expected the journal to be 'a record of grievances' but found something different. What does this expectation reveal?", opts:["The narrator knew Uncle Desmond was a forgiving person","The narrator assumed that someone who catalogues apologies must be focused on being wronged, rather than on the act of apology itself","The narrator had read the journal before","The narrator believed Uncle Desmond disliked people"], a:1 },
+      { type:"Vocabulary",       q:"The narrator describes a true apology as one that 'does not negotiate.' What does this mean in context?", opts:["A true apology is given very quickly","A true apology does not try to bargain — it does not shift blame or ask for forgiveness in return; it simply acknowledges wrongdoing","A true apology requires a response from the other person","A true apology is always accepted"], a:1 },
+      { type:"Analysis",         q:"The entry about Marcus at the hardware store and the entry about Margaret at Christmas are both included. What do these two examples together illustrate?", opts:["That strangers are more sincere than family members","That apologies can come in very different forms — a small act of honesty and a long-carried admission of fault — and both can be genuine","That Uncle Desmond trusted strangers more than his sister","That the most important apologies involve money"], a:1 },
+      { type:"Theme",            q:"Which statement best expresses a central theme of this story?", opts:["Family relationships are always more complicated than friendships","Journals are a valuable tool for processing difficult emotions","A genuine apology is an act of courage that deserves to be recognised — it costs something and asks for nothing","People rarely apologise sincerely in modern life"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author have the narrator admit that they have 'not kept it as faithfully' as Uncle Desmond did?", opts:["To show the narrator is lazy and undisciplined","To suggest the narrator does not value Uncle Desmond's lesson","To make the narrator more realistic and relatable — they understand the value of what Uncle Desmond did without claiming to have perfectly lived up to it","To contrast the narrator unfavourably with Uncle Desmond"], a:2 }
+    ]
+  },
+  {
+    title: "What the River Carries",
+    text: `In the summer before sixth grade, my family moved from our apartment in the city to a small town three hours north, where my mother had grown up. The town sat on either side of a wide, slow river that my mother talked about the way other people talk about old friends — as if it had a personality, a history, a set of opinions about things.
+
+I was not interested in the river. I was interested in the city we had left, in my friends there, in the specific quality of light that came through the fire escape outside my old bedroom window every afternoon. The river seemed like compensation for something I had not agreed to lose.
+
+My grandmother, who lived five minutes from our new house, took me to the river on my third day there. She brought two folding chairs and a paper bag with sandwiches, which suggested a longer visit than I had in mind. We sat on the bank and watched the water for what felt like a very long time without saying much.
+
+"What do you see?" she asked eventually.
+
+I almost said 'water,' but something about her tone stopped me. I looked more carefully. The surface was not uniform. Near our bank, the current was slow and the water was slightly darker, gathering small collections of leaves and twigs in lazy circles. In the middle, the river moved faster, greenish and purposeful. On the far bank, I could see the bottom — pale stones through clear, shallow water.
+
+"It's doing different things at the same time," I said.
+
+My grandmother nodded as if I had said something correct on a test. "Exactly. A river is never one thing. Most people who come from outside look at a river and see one object. People who grow up next to one learn to read it — the way you read a face."
+
+I didn't say anything. I was thinking about my city, and how I had learned to read it too — which subway cars were less crowded, which streets were faster in the rain, which corner stores were open late. I had spent nine years learning a place, and now that knowledge was useless, and I would have to start again with a river.
+
+I did not want to find that thought comforting. But sitting there with my grandmother and my sandwich, watching the water do its different things simultaneously, I found it slightly less terrible than I had expected.
+
+The next afternoon I came back on my own and brought a notebook.
+
+I did not draw maps. I did not write descriptions. I just sat and watched and wrote down what the river was doing — quietly, the way you take notes on something you intend to understand eventually, even if you don't yet.`,
+    q: [
+      { type:"Literal",          q:"Why did the narrator's family move to the small town?", opts:["The narrator's father got a new job there","They could no longer afford their city apartment","It was the town where the narrator's mother had grown up","The narrator's grandmother had asked them to move closer"], a:2 },
+      { type:"Inference",        q:"What does the narrator mean by saying the river 'seemed like compensation for something I had not agreed to lose'?", opts:["The narrator thought the river was a fair trade for the city","The narrator resented the move — the river was being offered as a replacement for the city life they valued, but they had never wanted to give that up","The narrator was excited to explore the river but hid it","The narrator's mother had promised the river would make up for the move"], a:1 },
+      { type:"Vocabulary",       q:"The narrator observes that the middle of the river was 'greenish and purposeful.' What does 'purposeful' suggest about the water here?", opts:["The water has an actual goal it is trying to reach","The water moves with clear, directed energy — in contrast to the slower, aimless current near the bank","The water is dangerous and should be avoided","The water is darker in colour because it is deeper"], a:1 },
+      { type:"Analysis",         q:"The narrator connects learning to 'read' the river with their previous knowledge of the city. How does this connection develop the story's central idea?", opts:["It shows the narrator prefers the city and always will","It suggests that place-knowledge is a transferable skill — the narrator has learned how to learn a place, even if the specific knowledge from the city is now useless","It proves the narrator is not interested in the river at all","It shows the grandmother and narrator have nothing in common"], a:1 },
+      { type:"Theme",            q:"Which theme is most clearly developed across the course of this story?", opts:["Rivers are more interesting than cities","Grandparents always know what is best for their grandchildren","Belonging to a place takes time and attention — it is learned, not given, and the willingness to pay attention is the first step","Moving to a new place is always a negative experience"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end with the narrator sitting quietly and taking notes 'the way you take notes on something you intend to understand eventually, even if you don't yet'?", opts:["To show the narrator has already come to love their new home","To suggest the narrator will become a scientist who studies rivers","To leave the narrator's adjustment open and honest — they haven't resolved their feelings, but they have made a small, genuine move toward engagement","To show the narrator is following their grandmother's advice exactly"], a:2 }
+    ]
+  }
+],
+
+S: [
+  {
+    title: "The Translated Word",
+    text: `Yuki's mother had grown up speaking Japanese, and there were certain things she said in Japanese that she never said in English — not because she couldn't, but because the English version was never quite right.
+
+The word that fascinated Yuki most was 'amae.' Her mother used it when Yuki leaned against her on the couch without asking, or when Yuki left her shoes by the front door knowing her mother would move them. Her mother explained it as a kind of comfortable dependence — the feeling of knowing you can rely on someone so completely that you don't need to ask permission or say thank you, because the understanding runs deeper than words.
+
+"We don't really have that word in English," her mother said.
+
+Yuki thought about this for a long time. She tried to imagine the feeling described by 'amae' and found she recognised it instantly — the ease of being with someone who knows you so well that the usual social rules relax. She had just never had a word for it.
+
+This was the part that puzzled her. If she had felt the feeling her whole life, why did not having a word for it matter?
+
+Her language arts teacher, Mr. Adichie, told her that some linguists believe the words available to us shape what we are able to think — that having a word for something makes it easier to identify, remember, and discuss. Others disagreed, arguing that people experience things perfectly well without words for them. The debate, he said, had been going on for decades without resolution.
+
+Yuki decided to run her own experiment. She spent a week paying close attention to every moment that felt like 'amae' — with her mother, with her best friend Cora, even once with her elderly neighbour who let her cut through his garden without asking. She wrote each moment down.
+
+At the end of the week she had fourteen entries. She was fairly certain she would not have noticed so many without the word to guide her attention.
+
+She brought this to Mr. Adichie. He read her notebook carefully.
+
+"I think," he said, "you may have just conducted a very small version of the experiment linguists have been arguing about. What do your results suggest?"
+
+Yuki looked at her fourteen entries. "That having the word didn't create the feeling," she said slowly. "But it helped me see it."
+
+Mr. Adichie nodded. "That," he said, "is not a bad place to land."`,
+    q: [
+      { type:"Literal",          q:"What does Yuki's mother say the word 'amae' describes?", opts:["The sadness of being separated from someone you love","A comfortable dependence — knowing you can rely on someone so completely that you don't need to ask or explain","A feeling of pride in one's cultural heritage","The difficulty of translating between two languages"], a:1 },
+      { type:"Inference",        q:"Why does Yuki decide to run her own experiment rather than simply accepting the debate between linguists?", opts:["She doesn't trust her teacher's knowledge","She wants to prove that language doesn't matter","She is curious and prefers to test ideas through direct experience rather than accepting unresolved theories","She has to complete a school assignment"], a:2 },
+      { type:"Vocabulary",       q:"What does 'linguists' mean as used in this story?", opts:["Philosophers who study the meaning of life","Scientists who study language — how it works, develops, and affects the mind","Teachers who specialise in foreign languages","Writers who create dictionaries"], a:1 },
+      { type:"Analysis",         q:"How does Yuki's conclusion — 'having the word didn't create the feeling, but it helped me see it' — relate to the debate Mr. Adichie described?", opts:["It proves that words create feelings and the linguists who disagreed were wrong","It resolves nothing and leaves the question entirely open","It finds a middle ground: words may not determine experience, but they can sharpen attention to it — a nuanced position between the two sides","It shows that the debate was unimportant"], a:2 },
+      { type:"Theme",            q:"Which theme is most clearly developed in this story?", opts:["Japanese is a more expressive language than English","Language shapes and focuses our awareness of experience, even when the experience itself exists independently of words","Children are better at science than adults expect","Translation is always impossible between languages"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author choose to end with Mr. Adichie's line 'That is not a bad place to land'?", opts:["To suggest Yuki's conclusion is incorrect but politely","To show that the question has a definitive answer after all","To affirm that arriving at a thoughtful, evidence-based position — even one that doesn't fully resolve a debate — is itself a worthy outcome","To imply that Yuki should continue her experiment longer"], a:2 }
+    ]
+  },
+  {
+    title: "The photograph at the Bottom of the Box",
+    text: `When my father died, I inherited a cardboard box of photographs he had never shown anyone. I found it on the top shelf of his wardrobe, behind a stack of National Geographic magazines he had kept since the 1970s.
+
+Most of the photographs were what I expected: my parents young and squinting in the sun, my sister as a toddler, a blurry shot of what might be a mountain. But near the bottom of the box was a photograph I did not recognise at all.
+
+It showed a boy of about twelve, standing in front of a small house I had never seen. He was not smiling, but his expression was not unhappy either — it was the careful, composed look of someone who has been told to stay still. On the back, in my father's handwriting: a name I didn't recognise, and a year — 1963.
+
+My father had been born in 1952. Which meant this photograph was taken when he was eleven.
+
+I showed it to my Aunt Nadia, his older sister, who was eighty-one and still lived in the same city. She looked at the photograph for a long time before she spoke.
+
+"That's the house before," she said.
+
+"Before what?"
+
+She set the photograph on the table and smoothed it with one finger as though pressing out a wrinkle. "Before we moved. Before everything changed. We don't talk about it."
+
+I wanted to ask why, but something in her voice — not grief exactly, more like a door that had been shut for so long that opening it would require more energy than she had — stopped me.
+
+I took the photograph home. I did not know the boy's name or why my father had kept his picture. I did not know what had changed in 1963, or why the family did not talk about it. I would probably never know.
+
+But I kept the photograph. I put it in my own box, next to pictures of my children, my own mountains and sunny afternoons. The boy stood in front of his house with his careful expression, holding still for a camera, carrying whatever he was carrying.
+
+I thought about how many boxes like this there must be in the world — full of faces and dates and the edges of stories that never got told all the way through. History, at the personal scale, is mostly silence and guesswork. We inherit the photographs. We don't always inherit the words.`,
+    q: [
+      { type:"Literal",          q:"When was the unrecognised photograph taken, and how old was the narrator's father at that time?", opts:["1953, when he was one year old","1963, when he was eleven years old","1972, when he was twenty years old","1963, when he was twenty years old"], a:1 },
+      { type:"Inference",        q:"What does the narrator mean by describing Aunt Nadia's voice as 'a door that had been shut for so long that opening it would require more energy than she had'?", opts:["Aunt Nadia had a quiet speaking voice","The memory was too old to be worth discussing","Whatever happened in 1963 involved pain that Aunt Nadia had long since sealed away and was no longer willing or able to revisit","Aunt Nadia was simply tired from old age"], a:2 },
+      { type:"Vocabulary",       q:"What does 'composed' mean in the description of the boy's expression in the photograph?", opts:["Cheerful and relaxed","Frightened and uncertain","Calm and controlled — carefully held together","Bored and distracted"], a:2 },
+      { type:"Analysis",         q:"How does the narrator's act of placing the photograph in their own box connect to the story's final idea?", opts:["It shows the narrator has forgotten about the mystery","It symbolises the narrator passing the unknown story forward — becoming part of the chain of people who inherit images without inheriting their meaning","It proves the narrator solved the mystery","It suggests photographs are more important than words"], a:1 },
+      { type:"Theme",            q:"Which theme is most strongly present in this story?", opts:["Families should always be honest about their history","The past is always recoverable if we look hard enough","Personal history is largely made of silence and incomplete stories — we inherit fragments, not wholes","Old photographs should be preserved in museums"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end with the sentence 'We inherit the photographs. We don't always inherit the words'?", opts:["To argue that writing is more important than photography","To suggest the narrator should have asked more questions while the family was alive","To crystallise the essay's central idea: that what is passed down is often evidence without explanation — presence without context","To imply that family history doesn't matter"], a:2 }
+    ]
+  }
+],
+
+T: [
+  {
+    title: "The Grief of Wolves",
+    text: `In 1995, grey wolves were reintroduced to Yellowstone National Park after a seventy-year absence. Wildlife managers expected the wolves to reduce the elk population, which had grown too large. What they did not expect was that the wolves would change the rivers.
+
+The connection was not obvious. It took years of careful observation to piece together. When wolves returned, the elk — which had previously grazed freely along riverbanks — began avoiding open valleys and gorges where they could be caught easily. They moved to higher, more sheltered terrain. The vegetation along the riverbanks, no longer constantly grazed, began to grow back. Willows, aspens, and cottonwoods returned. As tree cover increased, riverbanks became more stable. The rivers began to narrow and deepen, their courses straightened, and pools formed where before there had been only shallow, wandering water.
+
+Ecologists call this a trophic cascade — a chain of cause and effect that moves through an entire ecosystem when a key predator is added or removed. The wolves did not touch the rivers. They changed the behaviour of the elk. The elk's changed behaviour changed the plants. The plants changed the rivers.
+
+What makes Yellowstone remarkable as a case study is the visibility of the transformation. Most ecosystems change slowly, over centuries. In Yellowstone, the change was measurable within years, and the before-and-after was documented thoroughly by researchers who had not anticipated what they were seeing.
+
+The lesson scientists drew from Yellowstone extended well beyond wolves and elk. It suggested that ecosystems are not simply collections of species living alongside one another. They are webs of relationships — and the relationships matter as much as the individual species. Removing or restoring a single thread can alter the shape of the entire web in ways that no one predicted.
+
+For conservationists, Yellowstone became a compelling argument for what is now called rewilding: the deliberate restoration of predators and other keystone species to ecosystems from which they have been removed. The results are not always as dramatic as Yellowstone's. But the principle — that living systems need their full complement of relationships to function — has reshaped how ecologists think about restoration.
+
+The wolves changed the rivers. The rivers did not know they had been changed by wolves. The connections that hold ecosystems together are often invisible until something is removed — or returned.`,
+    q: [
+      { type:"Literal",          q:"What is a 'trophic cascade,' as defined in this passage?", opts:["The seasonal movement of large animal herds","A chain of cause and effect that moves through an ecosystem when a key predator is added or removed","A type of river erosion caused by flooding","The process by which plants grow back after a fire"], a:1 },
+      { type:"Inference",        q:"Why does the author emphasise that wildlife managers 'did not expect' the wolves to change the rivers?", opts:["To suggest the managers were incompetent","To show that the most significant ecological effects are sometimes the ones no one anticipated — complexity defies prediction","To argue that the reintroduction was a mistake","To explain why the programme was cancelled"], a:1 },
+      { type:"Vocabulary",       q:"What does 'keystone species' most likely mean, based on how it is used in the final paragraphs?", opts:["A species that is particularly attractive to tourists","A species whose presence or absence has an outsized effect on the entire ecosystem","A species that lives only in river environments","A species that is endangered globally"], a:1 },
+      { type:"Analysis",         q:"The author says 'the relationships matter as much as the individual species.' How does the Yellowstone example support this claim?", opts:["The wolves were more important than any other species in the park","The elk population recovered because of the wolves","The wolves' effect on the ecosystem came not through direct action on rivers or plants, but through changing the behaviour and movement of another species — demonstrating that ecological relationships drive outcomes more than individual presence alone","The rivers changed because scientists intervened directly"], a:2 },
+      { type:"Theme",            q:"Which theme best captures the central argument of this passage?", opts:["Predators are always necessary in every ecosystem","Human interference in nature is always harmful","Living systems are defined by invisible relationships, and restoring or removing one element can transform the whole in unexpected ways","Rivers are the most important part of any ecosystem"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end with the sentence 'The rivers did not know they had been changed by wolves'?", opts:["To suggest that rivers are not affected by wildlife","To remind the reader that nature operates through indirect, impersonal connections — the effects are real, but the system has no awareness of its own workings","To argue that wolves deserve more credit than scientists give them","To show that the relationship between wolves and rivers was accidental"], a:1 }
+    ]
+  },
+  {
+    title: "The Art of the Difficult Question",
+    text: `There is a particular kind of question that makes most people uncomfortable: the kind that does not have a clean answer, and that becomes more complicated the more carefully you examine it.
+
+Philosophers call these questions 'essentially contested concepts' — ideas about which reasonable, well-informed people persistently disagree, not because one side lacks information, but because the disagreement runs deeper than facts. Questions about what counts as art, what justice requires, or when a war is justified are not settled by gathering more data. They are questions about values, and values are not resolved by evidence alone.
+
+This is deeply inconvenient for modern culture, which tends to treat every question as though it has a correct answer waiting to be found — and tends to distrust anyone who says otherwise. We have built institutions around the idea of expertise: if you study something long enough, you will know the answer. This works well for questions with answers. It works less well for questions that are answers — that are themselves the ongoing process of a society working out what it believes.
+
+Consider the question of what we owe to future generations. We cannot ask them what they want. We do not know what technologies or circumstances will define their lives. We are making decisions now — about the environment, about national debt, about the preservation of languages and cultures — that will significantly constrain their options. Reasonable people disagree sharply about how much weight to give to people who do not yet exist.
+
+This is not a question that more research will resolve. It is a question that requires a choice of values — and different people, reasoning carefully from different starting points, will reach different conclusions. The philosopher John Rawls suggested imagining yourself behind a 'veil of ignorance,' not knowing which generation you would be born into. Would you then design a society that prioritised the present, or one that protected the future?
+
+It is a compelling thought experiment. It also, if you sit with it long enough, generates more questions than it answers.
+
+The discomfort of questions without answers is not a problem to be solved. It is a sign that the question is real — that it is asking something that actually matters, something that requires not just information but judgment, not just knowledge but wisdom. Learning to sit with that discomfort, to think carefully without demanding a resolution, may be one of the most important skills a person can develop.`,
+    q: [
+      { type:"Literal",          q:"What does the author mean by 'essentially contested concepts'?", opts:["Ideas that are too complex for most people to understand","Questions about which reasonable, well-informed people persistently disagree because the disagreement is about values, not facts","Scientific theories that have not yet been proven","Philosophical questions that have already been resolved"], a:1 },
+      { type:"Inference",        q:"Why does the author say it is 'deeply inconvenient for modern culture' that some questions lack clean answers?", opts:["Modern culture dislikes philosophy","Modern culture tends to treat all questions as having correct answers discoverable through expertise, so genuinely contested questions don't fit that model","Modern people are less intelligent than in the past","Modern media refuses to cover complicated topics"], a:1 },
+      { type:"Vocabulary",       q:"What does 'constrain' mean as used in the paragraph about future generations?", opts:["Expand and improve","Limit or restrict the available options","Destroy completely","Transfer to someone else"], a:1 },
+      { type:"Analysis",         q:"How does John Rawls's 'veil of ignorance' thought experiment relate to the question about future generations?", opts:["It proves we should always prioritise future generations","It is a tool for approaching the question fairly — by removing knowledge of which generation you belong to, it forces you to reason without self-interest","It shows that the question has an obvious answer","It suggests future generations will be better off than the present"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author say the 'veil of ignorance' thought experiment 'generates more questions than it answers'?", opts:["To show that Rawls was a poor philosopher","To dismiss the experiment as useless","To honestly demonstrate that even the best tools for thinking about hard questions don't eliminate difficulty — which supports the essay's central argument about discomfort","To suggest students should not study philosophy"], a:2 },
+      { type:"Theme",            q:"Which statement best expresses the central theme of this passage?", opts:["Philosophy is more important than science","Questions without clear answers are a sign of poor thinking","The ability to reason carefully through questions that resist resolution is a genuine and important form of intellectual maturity","All moral questions have correct answers if we think long enough"], a:2 }
+    ]
+  }
+],
+
+U: [
+  {
+    title: "What We Mean When We Say 'Natural'",
+    text: `Few words in the English language do more work with less scrutiny than the word 'natural.' It appears on food packaging, in arguments about medicine, in debates about human behaviour, and in political rhetoric. It is almost always used approvingly. And it almost never means what it appears to mean.
+
+When a food product is labelled 'natural,' the implication is that it is safer, purer, or more wholesome than alternatives. But 'natural' has no regulated definition in most countries. It can mean simply that the product was not made in a laboratory — which is a claim about origin, not about safety or nutritional value. Arsenic is natural. Many of the most effective medicines are synthetic. The association between 'natural' and 'good' has no logical foundation, but it is enormously durable.
+
+The same problem appears in arguments about human nature. When people say that some behaviour is 'natural,' they usually mean that it is innate, universal, and therefore in some sense justified — or at least inevitable. But the inference from 'this occurs in nature' to 'this is good or acceptable' is a logical error so common that philosophers have given it a name: the naturalistic fallacy. Many things that occur in nature are things we rightly try to prevent. Many things that do not occur in nature — kindness to strangers, international law, the treatment of infectious disease — are things we rightly value highly.
+
+What makes the naturalistic fallacy so persistent is that it satisfies a genuine psychological need. Calling something natural is a way of removing it from the domain of choice and placing it in the domain of fact. If a behaviour is natural, you don't need to argue for it — it simply is. The appeal to nature short-circuits the harder conversation about values.
+
+This matters because many of the most important questions societies face are precisely about what is natural versus what is chosen. How much of human aggression is innate? How much is shaped by culture and circumstance? The answer affects how we design schools, cities, and legal systems. If we assume the question is already answered by nature, we stop asking it — and in doing so, we surrender the possibility of change.
+
+The word 'natural' is not useless. It has genuine descriptive applications. But as an argument — as a reason to accept or reject something — it proves far less than it promises. Learning to notice when the word is doing persuasive work it hasn't earned is one of the more valuable habits of critical thinking.`,
+    q: [
+      { type:"Literal",          q:"What does the author say 'natural' means on most food labels?", opts:["That the product is certified safe by a government agency","Simply that the product was not made in a laboratory — a claim about origin, not safety or quality","That the product contains no added sugar","That the product was grown without pesticides"], a:1 },
+      { type:"Inference",        q:"Why does the author include the examples of arsenic and synthetic medicines in the second paragraph?", opts:["To argue that medicine is dangerous","To demonstrate that the categories of 'natural' and 'safe' or 'good' do not reliably correspond — each can be the opposite of what the word implies","To show that food labelling laws need reform","To suggest that people should avoid natural products"], a:1 },
+      { type:"Vocabulary",       q:"What is the 'naturalistic fallacy,' as the author defines it?", opts:["The mistake of believing that nature is always beautiful","The logical error of concluding that because something occurs in nature, it is good or acceptable","The false belief that natural products are always safer","The tendency to label things 'natural' for marketing purposes"], a:1 },
+      { type:"Analysis",         q:"The author argues that 'calling something natural is a way of removing it from the domain of choice and placing it in the domain of fact.' How does this connect to the essay's warning about human behaviour?", opts:["It suggests human behaviour cannot be changed","It shows that labelling a behaviour 'natural' stops the harder conversation about whether it should be accepted or changed — which has real consequences for how societies are organised","It argues that all human behaviour is chosen, not innate","It proves that the naturalistic fallacy only applies to food"], a:1 },
+      { type:"Theme",            q:"Which theme most accurately captures the essay's central argument?", opts:["Natural products are always better than synthetic ones","Human behaviour is mostly determined by nature, not culture","The word 'natural' functions as a persuasive shortcut that bypasses genuine argument — and recognising this is a crucial critical thinking skill","Language is the most important tool in political debate"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author concede in the final paragraph that 'the word natural is not useless' before restating the warning?", opts:["Because the author is uncertain about the argument","To avoid seeming extreme — acknowledging the word's genuine uses makes the critique of its misuse more credible and fair","To suggest the essay's argument applies only sometimes","To encourage readers to use the word more carefully in everyday speech"], a:1 }
+    ]
+  },
+  {
+    title: "The Last Polar Expedition",
+    text: `In the winter of 1911, two expeditions raced to become the first to reach the South Pole. The Norwegian team, led by Roald Amundsen, arrived on December 14th. The British team, led by Robert Falcon Scott, arrived five weeks later — to find the Norwegian flag already planted in the ice.
+
+Scott's team died on the return journey. They were found eight months later, eleven miles from a supply depot that might have saved them.
+
+For much of the twentieth century, the story was told as a tragedy of heroism: Scott and his men had died bravely in an impossible landscape. The cold had killed them; the distance had been too great; the margin was simply too slim. The public mourning in Britain was profound. Scott became a national symbol of noble failure.
+
+Then historians began to look more carefully at the decisions made before and during the expedition.
+
+Amundsen had used dog sleds as his primary means of transport. He had planned to kill some of the dogs for food along the route, reducing the weight his team carried as the journey progressed. It was efficient, pragmatic, and it worked. Scott, by contrast, had relied primarily on motorised sledges and ponies — both of which failed in the extreme cold — and had underestimated the caloric needs of men travelling on foot in polar conditions. He had placed his supply depots closer together than his planned route required and had not stocked the final depot adequately.
+
+These were not unlucky accidents. They were planning decisions, made before anyone set out.
+
+The question this raises is not whether Scott was brave — he was. It is whether bravery is sufficient. The British cultural narrative around Scott had emphasised suffering and endurance over calculation and preparation, in part because these values aligned with how British society understood itself at the time. Efficiency felt cold; heroism felt warm. But efficiency, as Amundsen demonstrated, was what kept people alive.
+
+The story of the two expeditions is not simply a story about polar exploration. It is a study in how we choose to remember failure — and what those choices reveal about what we value. Britain remembered Scott. Norway remembered Amundsen. One nation built a monument to how a man died. The other built one to how a man planned.`,
+    q: [
+      { type:"Literal",          q:"How did Amundsen's approach to dog sleds differ from Scott's approach to transport?", opts:["Amundsen used motorised sledges while Scott used dog sleds","Amundsen used dog sleds efficiently and planned to use some dogs as food; Scott relied on motorised sledges and ponies, both of which failed in the cold","Amundsen used ponies and Scott used dogs","Both teams used the same method of transport"], a:1 },
+      { type:"Inference",        q:"The author writes that Scott 'had underestimated the caloric needs of men travelling on foot in polar conditions.' What does this imply about Scott's failure?", opts:["The cold was simply too extreme for any team to survive","The failure was partly the result of preventable planning errors, not only bad luck or the harshness of the environment","Scott was not a capable leader","The British government had not given Scott enough funding"], a:1 },
+      { type:"Vocabulary",       q:"What does 'pragmatic' mean as used to describe Amundsen's decision to plan to kill some dogs for food?", opts:["Cruel and unnecessary","Focused on what is practical and effective in achieving the goal, even if it is uncomfortable","Reckless and poorly planned","Traditional and culturally expected"], a:1 },
+      { type:"Analysis",         q:"The author says British culture 'emphasised suffering and endurance over calculation and preparation.' How does this cultural value connect to how Scott's expedition was remembered?", opts:["It shows Britain had better historians than Norway","It explains why Britain chose to honour Scott's bravery rather than examine his planning — the cultural framework made heroic failure more narratively satisfying than efficient success","It proves Scott was more heroic than Amundsen","It suggests the British public did not know about Amundsen's expedition"], a:1 },
+      { type:"Theme",            q:"Which theme is most clearly developed in this passage?", opts:["Antarctic exploration is always dangerous and unpredictable","Norwegian culture is superior to British culture","How societies choose to remember failure reveals what they value — and sometimes what they avoid examining","Bravery is the most important quality in a leader"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end with the contrast — 'One nation built a monument to how a man died. The other built one to how a man planned'?", opts:["To suggest that planning is always more important than courage","To argue that Norway was a greater nation than Britain","To crystallise the essay's central contrast in a single, memorable image that makes the reader reflect on what kinds of achievement deserve commemoration","To conclude that Scott should not be remembered at all"], a:2 }
+    ]
+  }
+],
+
+V: [
+  {
+    title: "The Banality of Evil",
+    text: "The philosopher Hannah Arendt attended the 1961 trial of Adolf Eichmann, a principal organiser of the Holocaust, expecting to find a monster. What she found instead was a terrifyingly ordinary bureaucrat who had done his job efficiently and who seemed incapable of independent moral reflection.\n\nArendt coined the phrase the banality of evil to describe how ordinary people can perpetuate enormous harm by subordinating moral judgment to institutional loyalty and career advancement. Eichmann did not hate his victims. He simply did not think about them as people at all. He thought about logistics, paperwork, and schedules. His crime was not passion but the absence of thinking.\n\nArendt's analysis was received with outrage by many, particularly in the Jewish community. Critics argued she had made Eichmann seem too sympathetic, had diminished the ideological dimension of his crimes, and had placed too much responsibility on the victims' own community leaders who cooperated under impossible conditions. These criticisms were serious and remain unresolved.\n\nWhat Arendt insisted on — and what gives her analysis its lasting and uncomfortable relevance — is that radical evil does not require radical people. It requires ordinary people in systems that reward compliance and punish independent thought. The most dangerous condition is not the presence of monsters but the absence of reflection.\n\nDecades later, social psychologists found experimental support for this idea. Stanley Milgram's obedience experiments showed that the majority of ordinary people would administer what they believed were severe electric shocks to strangers when instructed to do so by an authority figure in a laboratory setting. The subjects were not sadistic. They were compliant. The results troubled everyone who encountered them — including, reportedly, Milgram himself.\n\nArendt's contribution was not to excuse Eichmann. She believed he deserved to hang, and she said so. Her contribution was to remove the comfortable distance between ourselves and those who do harm. The question she left behind is not 'how could they?' but 'under what conditions could we?' It is a question without a reassuring answer.",
+    q: [
+      { type:"Literal",          q:"What term did Arendt coin based on her observations of Eichmann's trial?", opts:["The architecture of obedience","The banality of evil","The bureaucracy of cruelty","The ethics of compliance"], a:1 },
+      { type:"Inference",        q:"What does Arendt mean when she says Eichmann's crime was 'the absence of thinking' rather than hatred?", opts:["He was mentally incapable","He deliberately chose not to think about the harm he caused","His crimes were accidental","He was following instinct rather than orders"], a:1 },
+      { type:"Vocabulary",       q:"What does 'perpetuate' mean as used in the second paragraph?", opts:["Resist or oppose","Cause to continue or persist","Investigate and expose","Witness and record"], a:1 },
+      { type:"Analysis",         q:"How does the reference to Milgram's experiments strengthen Arendt's central argument?", opts:["It disproves her theory by showing most people refuse to obey","It suggests ordinary people can harm others when instructed, supporting her claim that evil doesn't require exceptional people","It shows that psychologists disagreed with her","It proves Eichmann was mentally ill"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author end with the question 'under what conditions could we?' rather than a statement?", opts:["Because the author doesn't know the answer","To leave readers with an uncomfortable, open-ended question that implicates them personally","To suggest the question is unanswerable and unimportant","To criticise Arendt's work"], a:1 },
+      { type:"Theme",            q:"Which theme is most powerfully present in this passage?", opts:["History always repeats itself","Evil is the product of extraordinary individuals","The most dangerous form of harm may come from ordinary compliance rather than exceptional cruelty","Psychological experiments are unreliable"], a:2 }
+    ]
+  }
+],
+
+W: [
+  {
+    title: "Complexity and Emergence",
+    text: "Emergence occurs when properties appear at the level of a system that cannot be predicted from — or reduced to — the properties of its individual components. The wetness of water cannot be derived from examining a single water molecule. The consciousness we experience from moment to moment cannot be explained by describing a single neuron. The behaviour of an ant colony — its architecture, its resource management, its collective responses to threats — cannot be found in any individual ant.\n\nThese are not merely interesting curiosities. They represent a genuine challenge to reductionism, the philosophical position that understanding the parts of a system is sufficient to understand the whole. Reductionism has been enormously productive in science. Breaking complex systems into components has generated most of modern medicine, chemistry, and physics. But emergence suggests that reductionism has limits — that there are properties of complex systems that only exist at the level of the system and simply cannot be accessed by analysing parts in isolation.\n\nThe philosopher Daniel Dennett has argued that some emergent phenomena are what he calls 'real patterns' — not just useful fictions or convenient ways of describing things, but genuine features of the world that exist at a particular level of analysis and not below it. Money is real even though it is just paper. A traffic jam is real even though it is just cars. The self may be real even though it is just neurons.\n\nThe implications for how we study minds and societies are significant. If consciousness is an emergent property of neural activity, studying neurons alone may never explain it — any more than studying the pixels of a painting can explain its emotional impact. If social behaviour is emergent from individual actors, studying individuals alone cannot predict how crowds, institutions, or cultures will behave.\n\nComplex systems routinely produce emergent behaviours that surprise even expert observers. Occasionally, small changes in a system produce cascading, unpredictable effects. Occasionally, systems that appear chaotic self-organise into structure. The world at the level of systems is stranger than the world at the level of parts — and perhaps more honest about what it is.",
+    q: [
+      { type:"Literal",          q:"What is reductionism, as defined in this passage?", opts:["The study of complex systems","The view that understanding a system's parts is sufficient to understand the whole","A method of breaking down philosophical arguments","The idea that science cannot explain the natural world"], a:1 },
+      { type:"Inference",        q:"Why does the author say reductionism 'has limits' rather than arguing it is wrong?", opts:["To avoid offending scientists who use reductionist methods","Because the author doesn't have a clear position","To acknowledge reductionism's genuine successes while arguing for its boundaries — a more nuanced and accurate position","Because reductionism has no limits"], a:2 },
+      { type:"Vocabulary",       q:"What does Dennett mean by 'real patterns' in the third paragraph?", opts:["Decorative designs that exist in nature","Emergent features that genuinely exist at the level of the system, not just as useful fictions","Mathematical formulas that describe complex systems","Repeated behaviours in animal populations"], a:1 },
+      { type:"Analysis",         q:"How does the example of studying pixels of a painting work as an analogy for understanding consciousness?", opts:["It suggests art is as complex as the brain","It illustrates that the level of analysis matters — a painting's emotional impact is only accessible at the level of the whole work, just as consciousness may only exist at the system level","It shows that paintings and brains are equally poorly understood","It argues that scientists should study art"], a:1 },
+      { type:"Theme",            q:"What is the central argument the author is building across this passage?", opts:["Science has failed to explain the natural world","Complex systems require a level of analysis that cannot be reduced to their parts, and this is a fundamental feature of reality","Emergent phenomena are not scientifically valid","Reductionism should be abandoned"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author end with the phrase 'perhaps more honest about what it is'?", opts:["To suggest the reductionist view of the world is an incomplete and somewhat artificial simplification, while the emergent view captures something truer about how reality is organised","To argue that science is dishonest","To compliment complex systems researchers","To admit the author is uncertain about the topic"], a:0 }
+    ]
+  }
+],
+
+X: [
+  {
+    title: "The Unreliable Narrator",
+    text: `Every story is told from somewhere. This is so obvious that it barely seems worth saying — of course every narrator occupies a position, has experiences, has biases. And yet we routinely forget it. We read a first-person account and feel as though we are receiving direct access to events, when in fact we are receiving that narrator's version of events, shaped by what they noticed, what they remembered, what they chose to include, and what they wanted us to believe.
+
+Literary critics use the term 'unreliable narrator' to describe a narrator whose account of events is demonstrably incomplete, self-serving, or distorted. The classic examples are fictional — Nick Carraway softening Jay Gatsby's crimes in The Great Gatsby, Stevens repressing his emotional life in The Remains of the Day. But unreliable narration is not only a literary device. It describes something true about all human testimony.
+
+Memory itself is reconstructive, not archival. When we remember an event, we do not retrieve a stored recording. We reconstruct the event from fragments — sensory details, emotional residue, later information — and we do so in ways that are influenced by what we now believe, what we now need the past to mean. Psychologists have demonstrated repeatedly that eyewitness accounts of the same event can diverge dramatically, and that people can be convinced to remember events that did not occur.
+
+This is not a counsel of despair. It does not mean that all accounts are equally valid, or that truth is inaccessible. It means that accounts require interpretation, that testimony is evidence rather than fact, and that the position of the narrator — their interests, their vantage point, their relationship to what they are describing — matters as much as the content of what they say.
+
+Historians have long understood this. They are trained to ask not only what a source says but why it was produced, by whom, for what audience, and with what possible motivations. The same document can look very different depending on whether it was written by the victor or the defeated, by the powerful or the marginalised, in the immediate aftermath of events or decades later.
+
+The skill of reading for the narrator — of asking whose voice is speaking, what they stand to gain, what they cannot or will not see — is one of the most demanding and most necessary skills in any domain that involves human testimony. It is also, perhaps, one of the most unsettling. To apply it consistently is to become permanently uncertain — and permanently more honest.`,
+    q: [
+      { type:"Literal",          q:"How do literary critics define an 'unreliable narrator'?", opts:["A narrator who tells the story from a first-person perspective","A narrator whose account is demonstrably incomplete, self-serving, or distorted","A narrator who describes events they did not witness","A narrator who changes their story between chapters"], a:1 },
+      { type:"Inference",        q:"Why does the author say that unreliable narration 'describes something true about all human testimony,' not just fictional narrators?", opts:["Because all people are dishonest","Because human memory is reconstructive and all narrators have positions, interests, and blind spots that shape what they report","Because historians have proven all testimony is false","Because eyewitness accounts are never used in courts"], a:1 },
+      { type:"Vocabulary",       q:"What does 'reconstructive' mean in the phrase 'memory itself is reconstructive, not archival'?", opts:["Memory stores events as perfect recordings","Memory actively rebuilds events from fragments and is influenced by present beliefs, rather than playing back a stored record","Memory is always accurate if the event was important","Memory works better with practice"], a:1 },
+      { type:"Analysis",         q:"The author says historians ask 'not only what a source says but why it was produced.' How does this practice relate to the essay's argument about unreliable narration?", opts:["It shows that historians distrust all sources","It applies the essay's central principle to non-fiction: understanding a narrator requires understanding their position, motivation, and audience — not just their content","It suggests that historical documents are more reliable than eyewitness accounts","It proves that only trained historians can read critically"], a:1 },
+      { type:"Theme",            q:"Which theme best describes the central argument of this essay?", opts:["Fiction is more honest than non-fiction because it admits it is invented","All narrators are liars and cannot be trusted","Critically examining who is speaking and why is essential to understanding any account — and doing so consistently requires both skill and intellectual honesty","Memory is fundamentally broken and should not be used as evidence"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author describe becoming a critical reader of narrators as 'permanently uncertain — and permanently more honest'?", opts:["To discourage readers from developing this skill","To suggest that uncertainty is a failure of critical thinking","To argue that genuine intellectual honesty means holding accounts as provisional rather than settled — and that this discomfort is the price of thinking clearly","To imply that all critical reading leads to paralysis"], a:2 }
+    ]
+  },
+  {
+    title: "The Space Between Stars",
+    text: `The nearest star to our Sun is Proxima Centauri, approximately 4.24 light-years away. A light-year is the distance light travels in one year — roughly 9.46 trillion kilometres. To reach Proxima Centauri at the speed of the fastest spacecraft humanity has ever launched, the journey would take approximately seventy thousand years.
+
+These numbers are accurate. They are also, in a meaningful sense, unimaginable. The human brain evolved to navigate environments measured in metres and kilometres, to track time in hours and seasons. We are not equipped by nature to feel the difference between a million and a billion, let alone to intuit what seventy thousand years of travel actually means. We can state these facts; we cannot truly experience their scale.
+
+This gap between what we can know and what we can feel is one of the most characteristic features of modern science. The objects and timeframes that science describes — quantum particles, geological epochs, astronomical distances — are systematically outside the range of direct human experience. We encounter them entirely through instruments, mathematics, and analogy. A physicist who spends her career studying subatomic particles has never seen one and never will. A geologist who maps the movement of tectonic plates across hundreds of millions of years experiences none of that time directly.
+
+Science asks us, in other words, to trust what we cannot perceive. This is a remarkable thing to ask. For most of human history, knowledge was grounded in direct experience — what you could touch, taste, hear, or observe with your own eyes. The scientific revolution gradually replaced personal perception with instrumented measurement, and invited humanity to accept that the world as measured is often radically different from the world as experienced.
+
+Most of us accept this bargain without examining it. We believe in atoms, in black holes, in the age of the universe, not because we have verified these things ourselves but because we trust the institutions and methods that produced the claims. This is not gullibility — the track record of scientific method justifies the trust. But it is worth pausing, occasionally, to notice that our picture of the universe is built almost entirely on inference and instrument rather than on direct encounter.
+
+The space between stars is real. It is also, in the most immediate sense, something none of us will ever know.`,
+    q: [
+      { type:"Literal",          q:"How long would it take the fastest spacecraft ever launched to reach Proxima Centauri?", opts:["4.24 years","Approximately seventy thousand years","Nine hundred years","Four hundred and twenty years"], a:1 },
+      { type:"Inference",        q:"The author says we 'can state these facts' about astronomical distances 'but cannot truly experience their scale.' What is the author's point?", opts:["Science has failed to explain the universe","The human brain is too primitive to learn science","There is a meaningful gap between knowing something intellectually and being able to truly feel or imagine it — and modern science routinely operates in that gap","Astronomical distances are not actually that large"], a:2 },
+      { type:"Vocabulary",       q:"What does 'inference' mean as used in the final paragraph?", opts:["A type of scientific instrument","A conclusion reached through reasoning from evidence, rather than through direct observation","A measurement taken in a laboratory","A form of scientific disagreement"], a:1 },
+      { type:"Analysis",         q:"How does the author's point about a physicist who has 'never seen' a subatomic particle support the essay's central argument?", opts:["It proves that physicists are less reliable than other scientists","It illustrates that even experts in a field operate entirely through mediated, indirect knowledge — reinforcing the claim that modern science asks us to trust what we cannot perceive","It suggests that subatomic physics is not a real science","It shows that instruments are always more accurate than direct observation"], a:1 },
+      { type:"Theme",            q:"Which theme most clearly runs through this passage?", opts:["Space exploration is the most important scientific endeavour","Modern science reveals a universe that is fundamentally beyond direct human perception — and our relationship to that knowledge is built on trust in method rather than on experience","Human beings are incapable of understanding the universe","Technology has made the universe accessible to everyone"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author end with the sentence 'It is also, in the most immediate sense, something none of us will ever know'?", opts:["To argue that astronomy is a waste of time","To discourage readers from studying science","To leave readers sitting with the gap the essay has opened — between what is known and what is felt — rather than resolving the tension it has built","To suggest the universe is unknowable and science should stop trying"], a:2 }
+    ]
+  }
+],
+
+Y: [
+  {
+    title: "The Patience of Stone",
+    text: `Geologists speak of 'deep time' — the vast spans of Earth's history that precede human existence — as something that must be learned rather than felt. James Hutton, the eighteenth-century Scottish geologist who first proposed that the Earth was incomprehensibly old, said that in the geological record he found 'no vestige of a beginning, no prospect of an end.' He meant this as a scientific observation. It struck his contemporaries as almost theological in its implications.
+
+Before Hutton, the dominant view in European thought held that the Earth was a few thousand years old — young enough that human history and Earth history were roughly coterminous. Hutton's evidence — the slow deposition of sediments, the gradual wearing away of mountains, the folded strata of rock that recorded immense pressures over immense periods — required abandoning this comfortable alignment. The Earth had a history in which human beings were an almost negligible recent addition.
+
+This reframing has consequences that extend beyond science. If the Earth is ancient, then the circumstances that make human life possible — the particular combination of atmosphere, temperature, and chemistry that defines our moment — are not the natural and permanent condition of the planet. They are a phase. They have existed for an eyeblink in geological terms, and they will not last.
+
+Modern climate science has made this urgency concrete. The carbon dioxide levels now rising in the atmosphere have not been this high for approximately three million years — long before anatomically modern humans existed. The rate of increase is, in geological terms, nearly instantaneous. The Earth has experienced mass extinctions before. It has recovered from them. The recovery, in each case, took millions of years.
+
+This does not mean that geological perspective leads to passivity. Understanding that the Earth's conditions are fragile and non-permanent is, if anything, an argument for the opposite. But it does complicate the narrative of human centrality that has characterised most of recorded history. We are not the inheritors of a stable world built for us. We are temporary occupants of a dynamic system that preceded us by billions of years and will continue — altered, perhaps, but continuing — long after us.
+
+Hutton looked at the folded rocks at Siccar Point in Scotland and read in them a story that his own civilisation had no framework to hold. He held it anyway. The ability to think on a scale that dwarfs human experience — and to take that thinking seriously — may be one of the stranger and more necessary capacities science has asked of us.`,
+    q: [
+      { type:"Literal",          q:"What did Hutton mean when he said he found 'no vestige of a beginning, no prospect of an end' in the geological record?", opts:["He believed God had created the Earth","The geological evidence he studied suggested the Earth was incomprehensibly old — with no clear starting point or end visible in the rock record","He could not find any fossils in the rocks he studied","He believed the Earth was expanding over time"], a:1 },
+      { type:"Inference",        q:"Why does the author say that Hutton's observation 'struck his contemporaries as almost theological in its implications'?", opts:["Hutton was a religious man who quoted scripture","The idea of an ancient, non-human-centred Earth challenged the dominant religious view that history began with creation and centred on humanity","Hutton's contemporaries were all theologians","The geological evidence supported the Bible's account of Earth's age"], a:1 },
+      { type:"Vocabulary",       q:"What does 'coterminous' mean in the phrase 'human history and Earth history were roughly coterminous'?", opts:["Equally important","Contradictory and opposed","Existing within the same boundaries or time span","Studied by the same disciplines"], a:2 },
+      { type:"Analysis",         q:"The author describes current CO₂ levels as 'nearly instantaneous' in geological terms. How does this use of geological perspective strengthen the essay's argument?", opts:["It proves that climate change is not a serious problem","It suggests the Earth has always had high CO₂ levels","It uses the scale of deep time to make the current rate of atmospheric change even more alarming — what feels gradual to humans is, by geological standards, shockingly fast","It shows that scientists disagree about climate change"], a:2 },
+      { type:"Theme",            q:"Which theme most accurately describes the central argument of this passage?", opts:["Geology is the most important scientific discipline","Human civilisation has always understood its place in geological history","Understanding deep time reveals that human existence is a brief and fragile episode in a vast, dynamic system — a perspective that is both humbling and urgent","The Earth is too old for humans to affect through their actions"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end by describing Hutton's encounter with the rocks at Siccar Point as 'a story that his own civilisation had no framework to hold' — and then add 'He held it anyway'?", opts:["To suggest Hutton was irrational","To imply that Hutton's discovery was a mistake","To honour the act of holding truths that resist our normal frameworks — and to suggest this capacity is not only scientific but profoundly human","To argue that Hutton was the most important scientist who ever lived"], a:2 }
+    ]
+  },
+  {
+    title: "On Forgetting",
+    text: `We speak of memory as though it were a possession — something we have or lose, hold or drop. We say a person 'has a good memory' the way we might say they have good eyesight: as a stable, measurable attribute. But memory is less like an organ and more like a practice, and the things we forget are not simply absent. They are often, in a complicated sense, still there.
+
+The neuroscience of forgetting is counterintuitive. For most of the twentieth century, the dominant model held that memories were stored like files, and forgetting was the equivalent of losing or corrupting a file. More recent research suggests that forgetting is an active process — that the brain does not merely fail to retain, but actively prunes, suppresses, and reorganises what it has encoded. This pruning is not a malfunction. It is essential. A brain that retained every sensory impression with equal clarity would be paralysed. The ability to forget the irrelevant is what makes it possible to act in the present.
+
+This has an uncomfortable implication. If forgetting is active, then what we forget is not random. The brain is constantly — and largely without our awareness — making decisions about what to retain and what to release. These decisions are influenced by emotion, repetition, meaning, and the social contexts in which memories are formed and recalled. Memories that are rehearsed — spoken aloud, written down, incorporated into personal narrative — are retained more reliably. Memories that are never revisited fade. We shape our own pasts, in part, by what we choose to rehearse.
+
+This is true at the individual level and, in a parallel way, at the collective level. Cultures remember through institutions — archives, museums, curricula, public ceremonies. What a society chooses to commemorate it retains; what it leaves uncommemorated it gradually loses. These are not neutral choices. Decisions about what a culture will remember are decisions about identity, about which histories are considered formative, about whose experiences count as part of the shared past.
+
+Jorge Luis Borges wrote a short story about a man who forgets nothing — who retains every experience with perfect fidelity and finds that, as a result, he cannot think. Thought requires abstraction, and abstraction requires letting go of particulars. To think is to forget, selectively. To be human, in some sense, is to be perpetually engaged in the act of deciding — usually without knowing it — what to carry and what to leave behind.`,
+    q: [
+      { type:"Literal",          q:"What does the more recent neuroscience research suggest about forgetting, according to this passage?", opts:["Forgetting is a random malfunction of the brain","Forgetting is an active process — the brain actively prunes, suppresses, and reorganises what it has stored, and this is essential rather than a failure","Forgetting only occurs when a person is stressed or tired","Forgetting can be completely prevented with practice"], a:1 },
+      { type:"Inference",        q:"The author says memories that are 'rehearsed — spoken aloud, written down, incorporated into personal narrative — are retained more reliably.' What uncomfortable conclusion follows from this?", opts:["People with bad memories should write more","All memories are equally unreliable","We actively shape our own remembered past through what we choose to revisit — meaning personal history is partly a construction, not a neutral record","Writing things down is the only way to remember them"], a:2 },
+      { type:"Vocabulary",       q:"What does 'commemorate' mean as used in the paragraph about collective memory?", opts:["To criticise or examine something from the past","To officially preserve and honour the memory of something through ceremony, monuments, or institutions","To destroy records of past events","To debate the accuracy of historical accounts"], a:1 },
+      { type:"Analysis",         q:"How does the Borges story about the man who forgets nothing function within the essay's argument?", opts:["It proves that perfect memory is the ideal to aim for","It is unrelated to the essay's main point","It illustrates that forgetting is not only inevitable but necessary for thought — supporting the essay's argument that active forgetting is a feature of mind, not a flaw","It shows that fiction is more insightful than neuroscience"], a:2 },
+      { type:"Theme",            q:"Which theme best captures the essay's central argument?", opts:["Technology is destroying human memory","Forgetting is a failure that should be corrected","Forgetting is an active, necessary, and value-laden process — at both the individual and cultural level, what we choose to forget shapes who we are","Neuroscience has proven that memory cannot be trusted"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author end with the phrase 'deciding — usually without knowing it — what to carry and what to leave behind'?", opts:["To suggest that forgetting is a conscious choice we make every day","To argue that people should be more deliberate about memory","To leave the reader with the unsettling and humanising recognition that we are all continuously shaped by an invisible, largely unconscious process of selection — not passive receivers of the past but active, unknowing editors of it","To conclude that memory is unreliable and unimportant"], a:2 }
+    ]
+  }
+],
+
+Z: [
+  {
+    title: "The Island of Sufficient Reason",
+    text: `Gottfried Wilhelm Leibniz, the seventeenth-century philosopher and mathematician, proposed what he called the Principle of Sufficient Reason: the idea that nothing happens without a reason. For every fact about the world, there must be an explanation — something that accounts for why things are this way rather than some other way. The principle seems, at first, almost too obvious to state. Of course things happen for reasons. What else would they happen for?
+
+The difficulty arrives when you push the principle to its logical conclusion. If every fact requires an explanation, then the existence of the universe itself requires one. Why is there something rather than nothing? This is perhaps the most fundamental question philosophy has ever posed, and it is precisely the kind of question that the Principle of Sufficient Reason demands we take seriously — and precisely the kind of question it cannot, by itself, answer.
+
+Various answers have been proposed. Theological accounts hold that the universe exists because God created it — but this relocates rather than resolves the question, since one must then ask why God exists. Leibniz's own answer was that God necessarily exists and that the universe is the best of all possible worlds — an answer that Voltaire found so inadequate that he wrote an entire satirical novel, Candide, specifically to mock it. Modern cosmologists propose that the universe may have emerged from a quantum vacuum — but 'quantum vacuum' is not the same as 'nothing,' and the question of why the vacuum exists with the properties it has remains open.
+
+What is philosophically interesting is not the failure of these answers but the durability of the question. The question 'why is there something rather than nothing' has survived every proposed answer with its force essentially intact. It belongs to a category of questions — alongside 'what is consciousness' and 'what grounds moral obligation' — that seem to retreat as inquiry advances, generating more precise versions of the same basic puzzle rather than dissolving under scrutiny.
+
+Some philosophers argue that this persistence is itself informative: that the question fails to find an answer because it is, in some sense, malformed — that 'nothing' is not a coherent alternative state from which existence needs to be explained. Others disagree. The debate continues.
+
+What the question does, regardless of whether it can be answered, is locate us. Standing at the edge of what can be explained and looking outward is not a position of defeat. It is the position from which all genuine inquiry begins. The island of sufficient reason has a shoreline, and knowing where it ends is not nothing.`,
+    q: [
+      { type:"Literal",          q:"What does Leibniz's Principle of Sufficient Reason state?", opts:["The universe was created by God for a sufficient reason","Nothing happens without a reason — every fact about the world requires an explanation","Mathematical reason is the foundation of all knowledge","Reason is sufficient for understanding all of science"], a:1 },
+      { type:"Inference",        q:"The author says theological accounts 'relocate rather than resolve' the question of why the universe exists. What does this mean?", opts:["Theology is unable to discuss the origin of the universe","Saying God created the universe answers one question but immediately raises another — why does God exist? — so the fundamental puzzle is not eliminated, only moved","Theological accounts are logically inconsistent","Leibniz disagreed with theological answers"], a:1 },
+      { type:"Vocabulary",       q:"What does 'malformed' mean in the phrase 'the question is, in some sense, malformed'?", opts:["Too emotional to be answered rationally","Incorrectly structured — built on assumptions or concepts that don't hold up, so it cannot be answered as posed","Too old to be relevant to modern philosophy","Too abstract for language to express"], a:1 },
+      { type:"Analysis",         q:"The author references Voltaire's Candide as a response to Leibniz. How does this reference function within the passage's argument?", opts:["It shows that philosophers and writers always disagree","It proves Leibniz was wrong","It illustrates that philosophical answers to fundamental questions have real stakes — inadequate answers have provoked serious cultural and artistic responses, not just academic disagreement","It suggests that satire is the best response to philosophy"], a:2 },
+      { type:"Theme",            q:"Which theme most fully describes the argument of this passage?", opts:["Philosophy has failed to answer its most important questions and should be replaced by science","The most fundamental questions are those that survive every proposed answer — and standing at the limit of explanation is not defeat but the origin of genuine inquiry","Leibniz was the most important philosopher in history","Religious answers to philosophical questions are always insufficient"], a:1 },
+      { type:"Author's Purpose", q:"Why does the author end with the sentence 'The island of sufficient reason has a shoreline, and knowing where it ends is not nothing'?", opts:["To suggest that the Principle of Sufficient Reason should be abandoned","To argue that unanswerable questions are a waste of time","To reframe the limit of explanation as itself meaningful — knowing the boundary of what reason can reach is a form of knowledge, and sitting with that limit honestly is more productive than pretending it doesn't exist","To conclude that the universe will eventually be fully explained"], a:2 }
+    ]
+  },
+  {
+    title: "The Trouble With Mirrors",
+    text: `There is a thought experiment attributed to various philosophers in various forms, but its core is simple: imagine that every decision you have ever made could have been made differently. Not because you lacked information or acted irrationally, but simply because — at the moment of choosing — both options were genuinely open. Now ask yourself: if this is true, are you responsible for what you chose?
+
+This is the problem of free will, and it has been generating disagreement for roughly as long as people have been thinking carefully about things. Its difficulty comes from a collision between two intuitions that both feel obviously true and are apparently irreconcilable.
+
+The first intuition is that the universe operates according to physical laws. Every event — the collision of billiard balls, the firing of a neuron — is the product of prior states of the universe acting according to those laws. If you knew the position and momentum of every particle in the universe at a given moment, you could in principle predict every subsequent state. On this view, the future is fixed by the past, and the experience of 'choosing' is something that happens inside a causal chain, not outside it. Your deliberation is part of the mechanism, not an escape from it.
+
+The second intuition is that deliberation matters. When you face a decision, something real is happening — not a performance of a choice already determined, but a genuine weighing. The feeling of authorship over your own actions is not simply an illusion that needs to be corrected. It is the foundation of moral life. Without it, concepts like responsibility, punishment, gratitude, and resentment lose their footing.
+
+Compatibilists — the largest group among professional philosophers — argue that this conflict is based on a misunderstanding of what freedom requires. Free will, they say, doesn't require escaping the causal chain. It requires acting from your own desires and reasoning without coercion. A decision is free if it issues from who you are, not from a constraint placed on you from outside. The determinist universe and the responsible agent can coexist.
+
+Critics find this unsatisfying. If who you are was itself determined by prior causes — your genes, your upbringing, your neurological architecture — then acting from 'who you are' is just another link in the chain you were trying to escape.
+
+The mirror of this problem reflects back whatever you bring to it. It is not a puzzle that more information will resolve. It is a question about the structure of the concepts we use to describe ourselves — about whether the language of freedom, choice, and responsibility can bear the weight we have always placed on it. The discomfort of sitting with it, without resolution, is itself a kind of answer. It tells us that we are beings for whom this question is not merely academic. It is the question underneath every other question about how to live.`,
+    q: [
+      { type:"Literal",          q:"What is the determinist view of decisions, as described in this passage?", opts:["Decisions are free because we make them ourselves","Every decision is the product of prior states of the universe acting according to physical laws — the future is fixed by the past","Decisions are determined by our emotions rather than our reasoning","Determinism proves that free will is impossible and morality is meaningless"], a:1 },
+      { type:"Inference",        q:"Why does the author say the feeling of deliberating is 'the foundation of moral life'?", opts:["Because morality is an illusion like free will","Because without the genuine experience of choosing, concepts like responsibility and punishment have nothing to stand on — moral life requires that choices be real","Because deliberation always leads to better decisions","Because philosophers have proven that we always deliberate correctly"], a:1 },
+      { type:"Vocabulary",       q:"What does 'compatibilist' mean as used in this passage?", opts:["A philosopher who believes free will and determinism are both false","A philosopher who believes that free will and determinism can coexist — that freedom means acting from your own desires without coercion, not escaping causation","A philosopher who believes only in free will","A philosopher who rejects moral responsibility"], a:1 },
+      { type:"Analysis",         q:"What is the core objection to the compatibilist position, as described in the passage?", opts:["Compatibilists don't understand physical determinism","Compatibilism is too complicated for most people","If who you are was itself shaped by prior causes you didn't choose, then acting from 'who you are' is still just another determined link — it hasn't actually escaped the problem","Compatibilism was invented too recently to be taken seriously"], a:2 },
+      { type:"Theme",            q:"Which statement most accurately captures the central argument of this passage?", opts:["Free will definitely exists and determinism is false","Science has resolved the free will debate in favour of determinism","The free will problem reflects a deep tension between two intuitions that both feel true and resist resolution — and sitting honestly with this tension is more intellectually valuable than forcing a premature conclusion","Compatibilism is the correct solution to the problem of free will"], a:2 },
+      { type:"Author's Purpose", q:"Why does the author describe the free will problem as a 'mirror that reflects back whatever you bring to it'?", opts:["To suggest the problem is purely psychological","To argue that free will doesn't really matter","To convey that the problem is not a puzzle with a hidden correct answer but a question that reveals the assumptions, values, and conceptual commitments of whoever approaches it — making honest engagement more important than confident resolution","To conclude that the problem is unsolvable and should be abandoned"], a:2 }
+    ]
+  }
+]
+
+}; // end STORIES
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEVEL DEFINITIONS
+═══════════════════════════════════════════════════════════════════ */
+
+const LEVELS = [
+  {id:'A', label:'A',  desc:'Emergent',         tier:1},
+  {id:'B', label:'B',  desc:'Emergent',         tier:1},
+  {id:'C', label:'C',  desc:'Early Emergent',   tier:1},
+  {id:'D', label:'D',  desc:'Early Emergent',   tier:1},
+  {id:'E', label:'E',  desc:'Early Reader',     tier:1},
+  {id:'F', label:'F',  desc:'Early Reader',     tier:1},
+  {id:'G', label:'G',  desc:'Developing',       tier:1},
+  {id:'H', label:'H',  desc:'Developing',       tier:1},
+  {id:'I', label:'I',  desc:'Developing',       tier:1},
+  {id:'J', label:'J',  desc:'Early Fluent',     tier:2},
+  {id:'K', label:'K',  desc:'Early Fluent',     tier:2},
+  {id:'L', label:'L',  desc:'Early Fluent',     tier:2},
+  {id:'M', label:'M',  desc:'Transitional',     tier:2},
+  {id:'N', label:'N',  desc:'Transitional',     tier:2},
+  {id:'O', label:'O',  desc:'Transitional',     tier:2},
+  {id:'P', label:'P',  desc:'Fluent',           tier:2},
+  {id:'Q', label:'Q',  desc:'Fluent',           tier:3},
+  {id:'R', label:'R',  desc:'Fluent',           tier:3},
+  {id:'S', label:'S',  desc:'Advanced Fluent',  tier:3},
+  {id:'T', label:'T',  desc:'Advanced Fluent',  tier:3},
+  {id:'U', label:'U',  desc:'Advanced Fluent',  tier:3},
+  {id:'V', label:'V',  desc:'Advanced',         tier:3},
+  {id:'W', label:'W',  desc:'Advanced',         tier:3},
+  {id:'X', label:'X',  desc:'Advanced',         tier:3},
+  {id:'Y', label:'Y',  desc:'Expert',           tier:3},
+  {id:'Z', label:'Z',  desc:'Expert',           tier:3}
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════════ */
+
+const ACCURACY_OK   = 0.90;
+const ACCURACY_FAIL = 0.70;
+const STREAK_UP     = 2;
+const STREAK_DOWN   = 2;
+
+let levelIdx      = 0;
+let storyIdx      = 0;
+let successStreak = 0;
+let failStreak    = 0;
+let currentBook   = null;
+let userAnswers   = [];
+let speechSupported = false;
+let recognition   = null;
+let countdownTimer = null;
+
+/* ═══════════════════════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════════════════════ */
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getCurrentLevel() { return LEVELS[levelIdx]; }
+
+function tierClass(tier) {
+  return tier === 1 ? 'tier-a' : tier === 2 ? 'tier-b' : 'tier-c';
+}
+
+function tierLabel(tier) {
+  return tier === 1 ? 'Levels A–I' : tier === 2 ? 'Levels J–P' : 'Levels Q–Z';
+}
+
+function updateHeader() {
+  const lvl = getCurrentLevel();
+  document.getElementById('hdr-level').textContent = lvl.label;
+  document.getElementById('hdr-desc').textContent  = lvl.desc;
+
+  // Streak dots (STREAK_UP = 2 means 2 dots)
+  const bar = document.getElementById('streak-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < STREAK_UP; i++) {
+    const d = document.createElement('div');
+    d.className = 's-dot' + (i < successStreak ? ' on' : i < failStreak ? ' warn' : '');
+    bar.appendChild(d);
+  }
+
+  const prog = Math.min(successStreak / STREAK_UP, 1) * 100;
+  document.getElementById('prog-fill').style.width = prog + '%';
+  document.getElementById('prog-count').textContent =
+    `${successStreak} / ${STREAK_UP} reads to advance`;
+  document.getElementById('story-level-pill').textContent = 'Level ' + lvl.label;
+  document.getElementById('story-tier-pill').textContent  = lvl.desc;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEVEL PICKER
+═══════════════════════════════════════════════════════════════════ */
+
+function buildLevelGrid() {
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+
+  // Group header labels
+  const headers = { J: 'Inference & Vocabulary', Q: 'Theme & Author\'s Purpose' };
+
+  LEVELS.forEach((lvl, idx) => {
+    if (headers[lvl.id]) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'width:100%;font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;padding:6px 2px 2px;';
+      sep.textContent = '— ' + headers[lvl.id];
+      grid.appendChild(sep);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'lvl-btn ' + tierClass(lvl.tier) + (idx === levelIdx ? ' active' : '');
+    btn.textContent = lvl.label;
+    btn.title = lvl.desc;
+    btn.onclick = () => selectLevel(idx);
+    grid.appendChild(btn);
+  });
+}
+
+function selectLevel(idx) {
+  levelIdx = idx;
+  successStreak = 0;
+  failStreak    = 0;
+  storyIdx      = 0;
+
+  // Update active state
+  document.querySelectorAll('.lvl-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+
+  document.getElementById('level-picker').style.display = 'none';
+  document.getElementById('split-view').style.display   = 'flex';
+
+  updateHeader();
+  loadStory();
+}
+
+function showLevelPicker() {
+  document.getElementById('level-picker').style.display = 'block';
+  document.getElementById('split-view').style.display   = 'none';
+  buildLevelGrid();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORY ENGINE
+═══════════════════════════════════════════════════════════════════ */
+
+function getStories() {
+  const lvl = getCurrentLevel();
+  return STORIES[lvl.id] || [];
+}
+
+function loadStory() {
+  const stories = getStories();
+  if (!stories.length) {
+    document.getElementById('story-area').innerHTML =
+      `<div class="empty-state"><span class="empty-emoji">✏️</span>
+       <p>No stories yet for Level ${getCurrentLevel().label}.<br>Add them to the STORIES object!</p></div>`;
+    resetQuizPanel();
+    document.getElementById('results-area').innerHTML = '';
+    document.getElementById('mic-controls').style.display = 'none';
+    return;
+  }
+
+  currentBook = stories[storyIdx % stories.length];
+  storyIdx++;
+
+  const lvl = getCurrentLevel();
+  document.getElementById('story-num-pill').textContent = 'Story ' + storyIdx;
+  updateHeader();
+
+  // Decide font style based on tier
+  const textClass = lvl.tier >= 2 ? 'story-text prose' : 'story-text';
+
+  // Render story paragraphs
+  const paragraphs = currentBook.text
+    .split('\n\n')
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => {
+      // Single-sentence lines (tier 1) vs proper paragraphs (tier 2+)
+      if (lvl.tier === 1) {
+        return `<p class="${textClass}" style="margin-bottom:8px;">${esc(p).replace(/\n/g,'<br>')}</p>`;
+      }
+      return `<p class="${textClass}" style="margin-bottom:14px;">${esc(p)}</p>`;
+    })
+    .join('');
+
+  document.getElementById('story-area').innerHTML = `
+    <div class="story-box slide-up">
+      <div class="story-title">${esc(currentBook.title)}</div>
+      ${paragraphs}
+    </div>`;
+
+  document.getElementById('results-area').innerHTML = '';
+  renderMicControls();
+  renderQuizPanel();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   QUIZ PANEL
+═══════════════════════════════════════════════════════════════════ */
+
+function resetQuizPanel() {
+  document.getElementById('quiz-body').innerHTML =
+    `<div class="quiz-idle">
+       <div class="quiz-idle-emoji">🤔</div>
+       <p>Load a story to see comprehension questions!</p>
+     </div>`;
+  document.getElementById('quiz-footer').style.display = 'none';
+  document.getElementById('quiz-sub').textContent = 'Read the story, then answer the questions.';
+}
+
+function renderQuizPanel() {
+  if (!currentBook || !currentBook.q || !currentBook.q.length) {
+    resetQuizPanel();
+    return;
+  }
+
+  userAnswers = new Array(currentBook.q.length).fill(null);
+
+  const lvl  = getCurrentLevel();
+  const tier = lvl.tier;
+
+  document.getElementById('quiz-sub').textContent =
+    `"${currentBook.title}" · ${currentBook.q.length} questions`;
+
+  let html = '';
+  currentBook.q.forEach((q, qi) => {
+    const typeColor = q.type === 'Literal' ? '#16a34a' :
+                      q.type === 'Vocabulary' ? '#0284c7' :
+                      q.type === 'Inference' ? '#7c3aed' :
+                      q.type === 'Theme' ? '#be185d' :
+                      q.type === "Author's Purpose" ? '#b45309' :
+                      '#475569';
+
+    html += `<div class="quiz-q slide-up" style="animation-delay:${qi * 0.06}s">
+      <div class="quiz-q-type" style="color:${typeColor};">${esc(q.type || 'Question')}</div>
+      <div class="quiz-q-text">Q${qi + 1}: ${esc(q.q)}</div>
+      <div class="quiz-opts">`;
+    q.opts.forEach((opt, oi) => {
+      html += `<button class="qopt" id="qo-${qi}-${oi}" onclick="pickAnswer(${qi},${oi})">${esc(opt)}</button>`;
+    });
+    html += `</div></div>`;
+  });
+
+  document.getElementById('quiz-body').innerHTML = html;
+  document.getElementById('quiz-footer').style.display = 'block';
+}
+
+function pickAnswer(qi, oi) {
+  userAnswers[qi] = oi;
+  const total = currentBook.q[qi].opts.length;
+  for (let i = 0; i < total; i++) {
+    const b = document.getElementById(`qo-${qi}-${i}`);
+    if (b) b.className = 'qopt' + (i === oi ? ' selected' : '');
+  }
+}
+
+function submitQuiz() {
+  const qs = currentBook.q;
+  let correct = 0;
+
+  qs.forEach((q, qi) => {
+    for (let oi = 0; oi < q.opts.length; oi++) {
+      const b = document.getElementById(`qo-${qi}-${oi}`);
+      if (!b) continue;
+      b.disabled = true;
+      if (oi === q.a)                                  b.classList.add('correct');
+      else if (oi === userAnswers[qi] && userAnswers[qi] !== q.a) b.classList.add('wrong');
+    }
+    if (userAnswers[qi] === q.a) correct++;
+  });
+
+  const pct = Math.round((correct / qs.length) * 100);
+  let scoreMsg = '';
+  if (pct === 100) scoreMsg = '🏆 Perfect! Outstanding comprehension!';
+  else if (pct >= 80) scoreMsg = '⭐ Strong work! Review the highlighted questions.';
+  else if (pct >= 60) scoreMsg = '📖 Good effort — re-read and look for the clues!';
+  else scoreMsg = '🔄 Try reading again slowly and re-take the quiz.';
+
+  const quizBody = document.getElementById('quiz-body');
+  const resultDiv = document.createElement('div');
+  resultDiv.className = 'quiz-score slide-up';
+  resultDiv.style.marginTop = '16px';
+  resultDiv.innerHTML = `
+    <div class="quiz-score-big">${correct} / ${qs.length}</div>
+    <div class="quiz-score-msg">${scoreMsg}</div>`;
+  quizBody.appendChild(resultDiv);
+  quizBody.scrollTop = quizBody.scrollHeight;
+
+  document.getElementById('quiz-footer').innerHTML =
+    `<button class="btn btn-blue" style="width:100%;" onclick="loadStory()">📖 Next Story</button>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SPEECH RECOGNITION
+═══════════════════════════════════════════════════════════════════ */
+
+function initSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  speechSupported = !!SpeechRecognition;
+}
+
+function renderMicControls() {
+  const ctrl = document.getElementById('mic-controls');
+  ctrl.style.display = 'block';
+
+  if (!speechSupported) {
+    ctrl.innerHTML = `
+      <div class="tip-box">
+        <div class="tip-title">📖 Read Aloud!</div>
+        Read the story out loud. Speech recognition is not available in this browser —
+        use the quiz panel to check your comprehension.
+      </div>
+      <button class="btn btn-green" style="width:100%;" onclick="markRead()">✓ I Read It!</button>`;
+    return;
+  }
+
+  ctrl.innerHTML = `
+    <div class="tip-box">
+      <div class="tip-title">🎙️ Read Aloud</div>
+      Press the button and read the story out loud. Try to say every word clearly!
+    </div>
+    <button class="btn btn-green btn-lg" id="start-btn" onclick="startListening()">🎙️ Start Reading</button>`;
+}
+
+function startListening() {
+  if (!speechSupported) return;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous  = true;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  const ctrl = document.getElementById('mic-controls');
+  let seconds = 30;
+  ctrl.innerHTML = `<button class="countdown-disp" disabled>🎙️ ${seconds}s</button>`;
+
+  countdownTimer = setInterval(() => {
+    seconds--;
+    const btn = ctrl.querySelector('.countdown-disp');
+    if (btn) btn.textContent = `🎙️ ${seconds}s`;
+    if (seconds <= 0) { clearInterval(countdownTimer); recognition.stop(); }
+  }, 1000);
+
+  let finalTranscript = '';
+  recognition.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
+    }
+  };
+  recognition.onerror = () => { clearInterval(countdownTimer); processReading(finalTranscript); };
+  recognition.onend   = () => { clearInterval(countdownTimer); processReading(finalTranscript); };
+  recognition.start();
+}
+
+function normalize(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(Boolean);
+}
+
+function processReading(transcript) {
+  if (!currentBook || !transcript || !transcript.trim()) {
+    renderResults({accuracy:0, isSuccess:false, feedback:[], advanced:false, regressed:false});
+    return;
+  }
+  const expected = normalize(currentBook.text);
+  const actual   = normalize(transcript);
+
+  let correct = 0;
+  const feedback = expected.map(word => {
+    const ok = actual.includes(word);
+    if (ok) correct++;
+    return {word, ok};
+  });
+
+  const accuracy   = expected.length ? correct / expected.length : 0;
+  const isSuccess  = accuracy >= ACCURACY_OK;
+  const isBad      = accuracy < ACCURACY_FAIL;
+
+  let newLvl = levelIdx, newSucc = isSuccess ? successStreak + 1 : 0,
+      newFail = isBad ? failStreak + 1 : 0, advanced = false, regressed = false;
+
+  if (isSuccess && newSucc >= STREAK_UP) {
+    newLvl = Math.min(levelIdx + 1, LEVELS.length - 1);
+    newSucc = 0; newFail = 0; advanced = true; storyIdx = 0;
+  } else if (newFail >= STREAK_DOWN) {
+    newLvl = Math.max(0, levelIdx - 1);
+    newSucc = 0; newFail = 0; regressed = true; storyIdx = 0;
+  }
+
+  levelIdx = newLvl; successStreak = newSucc; failStreak = newFail;
+  updateHeader();
+  renderResults({accuracy, isSuccess, feedback, advanced, regressed});
+}
+
+function markRead() {
+  // No speech API — just count as a successful read for progression purposes
+  successStreak++;
+  if (successStreak >= STREAK_UP) {
+    const newLvl = Math.min(levelIdx + 1, LEVELS.length - 1);
+    const advanced = newLvl > levelIdx;
+    levelIdx = newLvl; successStreak = 0; failStreak = 0;
+    if (advanced) storyIdx = 0;
+    updateHeader();
+    renderResults({accuracy:1, isSuccess:true, feedback:[], advanced, regressed:false});
+  } else {
+    updateHeader();
+    renderResults({accuracy:1, isSuccess:true, feedback:[], advanced:false, regressed:false});
+  }
+}
+
+function renderResults({accuracy, isSuccess, feedback, advanced, regressed}) {
+  const pct  = Math.round(accuracy * 100);
+  const area = document.getElementById('results-area');
+
+  const chips = feedback.length
+    ? feedback.map(f => `<span class="wchip ${f.ok?'ok':'bad'}">${esc(f.word)}</span>`).join(' ')
+    : '';
+
+  let msg = '';
+  if (pct === 100)     msg = '🏆 Perfect! Every word spot on!';
+  else if (pct >= 95)  msg = '⭐ Nearly perfect! Just a couple to work on.';
+  else if (pct >= 90)  msg = "✅ Great reading! You're nearly ready to level up.";
+  else if (pct >= 80)  msg = '👍 Good effort! Try reading a little more slowly.';
+  else if (pct >= 70)  msg = '📖 Keep practising! Point to each word as you read.';
+  else                 msg = "💡 Let's try again. Read slowly and say every word.";
+
+  let banner = '';
+  if (advanced) banner = `<div class="banner up">🎉 LEVEL UP! Now at Level ${LEVELS[levelIdx].label} — ${LEVELS[levelIdx].desc}</div>`;
+  if (regressed) banner = `<div class="banner down">🔄 Let's keep practising at Level ${LEVELS[levelIdx].label}</div>`;
+
+  area.innerHTML = `
+    <div class="results-card ${isSuccess?'success':'fail'} slide-up">
+      <div class="score-row">
+        <div><div class="score-num">${pct}%</div><div class="score-lbl">Accuracy</div></div>
+        <div class="badge ${isSuccess?'s':'f'}">${isSuccess?'⭐ Great!':'💪 Try Again!'}</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.7);border-radius:11px;padding:10px 13px;margin-bottom:13px;font-weight:700;font-size:.88rem;color:#374151;">${msg}</div>
+      ${chips ? `<div style="font-size:.72rem;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Word by Word</div>
+      <div class="word-feedback">${chips}</div>` : ''}
+      <div class="action-row">
+        <button class="btn btn-blue"  onclick="loadStory()">📖 Next Story</button>
+        <button class="btn btn-green" onclick="tryAgain()">🔄 Try Again</button>
+        <button class="btn btn-ghost btn-sm" onclick="showLevelPicker()">🎯 Levels</button>
+      </div>
+      ${banner}
+    </div>`;
+}
+
+function tryAgain() {
+  storyIdx--;
+  if (storyIdx < 0) storyIdx = 0;
+  loadStory();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════ */
+
+buildLevelGrid();
+initSpeech();
+</script>
+</body>
+</html>
